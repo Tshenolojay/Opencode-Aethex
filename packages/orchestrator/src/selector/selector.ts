@@ -8,6 +8,11 @@ import { SelectionPolicies } from "../model/selection-policies"
 import { CapabilityRegistry } from "../model/capability-registry"
 import type { RankedModel } from "../model/model-ranking"
 import type { SelectionPolicy } from "../model/selection-policies"
+import { ModelHealth } from "../model/model-health"
+import { CostEstimator } from "../model/cost-estimator"
+import { LatencyEstimator } from "../model/latency-estimator"
+import { FallbackStrategy } from "../model/fallback-strategy"
+import { ExecutionStrategy } from "../model/execution-strategy"
 
 export interface ModelSelection {
   readonly providerID: string
@@ -65,6 +70,12 @@ export interface Interface {
     readonly requiresVerification: boolean
   }) => Effect.Effect<CapabilityProfile>
   readonly selectWithFallback: (input: Input, policyName?: string) => Effect.Effect<RichSelection>
+  readonly selectWeighted: (input: Input, options?: {
+    readonly healthWeight?: number
+    readonly costWeight?: number
+    readonly latencyWeight?: number
+    readonly capabilityWeight?: number
+  }) => Effect.Effect<ModelSelection | undefined>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/orchestrator/ModelSelector") {}
@@ -281,10 +292,53 @@ const selectWithFallback: Interface["selectWithFallback"] = Effect.fn("ModelSele
   }
 })
 
+const selectWeighted: Interface["selectWeighted"] = Effect.fn("ModelSelector.selectWeighted")(function* (input, options = {}) {
+  const {
+    healthWeight = 0.2,
+    costWeight = 0.15,
+    latencyWeight = 0.15,
+    capabilityWeight = 0.5,
+  } = options
+
+  const modelHealth = yield* ModelHealth.Service
+  const costEstimator = yield* CostEstimator.Service
+  const latencyEstimator = yield* LatencyEstimator.Service
+
+  const requirements: CapabilityRequirement[] = input.requiredCapabilities.map((c) => ({
+    capability: c, weight: 1, optional: false,
+  }))
+
+  const scored = yield* Effect.all(input.availableModels.map((m) =>
+    Effect.gen(function* () {
+      const { matched, missing, score: capScore } = scoreModel(m, requirements)
+      const health = yield* modelHealth.getHealth(m.providerID, m.modelID)
+      const healthScore = health?.healthScore ?? 1
+      const cost = yield* costEstimator.estimateCost(m.providerID, m.modelID, 1000, 500)
+      const costScore = cost ? Math.max(0, 1 - cost.estimatedTotalCost / 0.1) : 0.5
+      const latency = yield* latencyEstimator.estimateLatency(m.providerID, m.modelID)
+      const latencyScore = latency ? Math.max(0, 1 - latency.estimatedTotalLatencyMs / 10000) : 0.5
+
+      const totalScore = (capScore * capabilityWeight) + (healthScore * healthWeight) + (costScore * costWeight) + (latencyScore * latencyWeight)
+      return { ...m, totalScore, capScore, healthScore, costScore, latencyScore, matched, missing }
+    }),
+  ))
+
+  const best = scored.sort((a, b) => b.totalScore - a.totalScore)[0]
+  if (!best || best.totalScore <= 0) return undefined
+
+  return {
+    providerID: best.providerID,
+    modelID: best.modelID,
+    capabilities: best.capabilities,
+    reason: `weighted selection (cap=${(best.capScore * capabilityWeight).toFixed(2)}, health=${(best.healthScore * healthWeight).toFixed(2)}, cost=${(best.costScore * costWeight).toFixed(2)}, latency=${(best.latencyScore * latencyWeight).toFixed(2)})`,
+    matchScore: best.totalScore,
+  }
+})
+
 const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
-    return Service.of({ select, evaluate, estimateCapabilities, selectWithFallback })
+    return Service.of({ select, evaluate, estimateCapabilities, selectWithFallback, selectWeighted })
   }),
 )
 

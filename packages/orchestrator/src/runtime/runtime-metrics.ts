@@ -83,6 +83,16 @@ export interface ExtendedMetrics {
   readonly skippedPreparationCount: number
   readonly contextCompressionRatio: number
   readonly executionPackageSizeBytes: number
+  readonly modelRecommendationCount: number
+  readonly providerRecommendationCount: number
+  readonly capabilityMatchCount: number
+  readonly estimatedCostTotal: number
+  readonly estimatedLatencyTotal: number
+  readonly contextUtilizationRate: number
+  readonly executionStrategyCount: number
+  readonly applicationAnalysisCount: number
+  readonly applicationDiscoveryCount: number
+  readonly applicationReportCount: number
 }
 
 export interface Interface {
@@ -137,6 +147,13 @@ export interface Interface {
   readonly recordSelectionCacheHit: () => Effect.Effect<void>
   readonly recordSelectionCacheMiss: () => Effect.Effect<void>
   readonly recordFallback: () => Effect.Effect<void>
+  readonly recordModelRecommendation: () => Effect.Effect<void>
+  readonly recordProviderRecommendation: () => Effect.Effect<void>
+  readonly recordCapabilityMatch: () => Effect.Effect<void>
+  readonly recordEstimatedCost: (cost: number) => Effect.Effect<void>
+  readonly recordEstimatedLatency: (latency: number) => Effect.Effect<void>
+  readonly recordContextUtilization: (rate: number) => Effect.Effect<void>
+  readonly recordExecutionStrategy: () => Effect.Effect<void>
   readonly recordSpecialistExecution: () => Effect.Effect<void>
   readonly recordCloudExecution: () => Effect.Effect<void>
   readonly recordKnowledgeExchange: () => Effect.Effect<void>
@@ -157,6 +174,9 @@ export interface Interface {
   readonly recordSkippedPreparation: () => Effect.Effect<void>
   readonly recordContextCompressionRatio: (ratio: number) => Effect.Effect<void>
   readonly recordExecutionPackageSize: (bytes: number) => Effect.Effect<void>
+  readonly recordApplicationAnalysis: () => Effect.Effect<void>
+  readonly recordApplicationDiscovery: () => Effect.Effect<void>
+  readonly recordApplicationReport: () => Effect.Effect<void>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/orchestrator/RuntimeMetrics") {}
@@ -245,6 +265,16 @@ function zeroExtended(): ExtendedMetrics {
     skippedPreparationCount: 0,
     contextCompressionRatio: 0,
     executionPackageSizeBytes: 0,
+    modelRecommendationCount: 0,
+    providerRecommendationCount: 0,
+    capabilityMatchCount: 0,
+    estimatedCostTotal: 0,
+    estimatedLatencyTotal: 0,
+    contextUtilizationRate: 0,
+    executionStrategyCount: 0,
+    applicationAnalysisCount: 0,
+    applicationDiscoveryCount: 0,
+    applicationReportCount: 0,
   }
 }
 
@@ -489,6 +519,34 @@ const layer = Layer.effect(
       yield* Ref.update(extended, (m) => ({ ...m, fallbackCount: m.fallbackCount + 1 }))
     })
 
+    const recordModelRecommendation = Effect.fn("RuntimeMetrics.recordModelRecommendation")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, modelRecommendationCount: m.modelRecommendationCount + 1 }))
+    })
+
+    const recordProviderRecommendation = Effect.fn("RuntimeMetrics.recordProviderRecommendation")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, providerRecommendationCount: m.providerRecommendationCount + 1 }))
+    })
+
+    const recordCapabilityMatch = Effect.fn("RuntimeMetrics.recordCapabilityMatch")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, capabilityMatchCount: m.capabilityMatchCount + 1 }))
+    })
+
+    const recordEstimatedCost = Effect.fn("RuntimeMetrics.recordEstimatedCost")(function* (cost: number) {
+      yield* Ref.update(extended, (m) => ({ ...m, estimatedCostTotal: m.estimatedCostTotal + cost }))
+    })
+
+    const recordEstimatedLatency = Effect.fn("RuntimeMetrics.recordEstimatedLatency")(function* (latency: number) {
+      yield* Ref.update(extended, (m) => ({ ...m, estimatedLatencyTotal: m.estimatedLatencyTotal + latency }))
+    })
+
+    const recordContextUtilization = Effect.fn("RuntimeMetrics.recordContextUtilization")(function* (rate: number) {
+      yield* Ref.update(extended, (m) => ({ ...m, contextUtilizationRate: rate }))
+    })
+
+    const recordExecutionStrategy = Effect.fn("RuntimeMetrics.recordExecutionStrategy")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, executionStrategyCount: m.executionStrategyCount + 1 }))
+    })
+
     const recordSpecialistExecution = Effect.fn("RuntimeMetrics.recordSpecialistExecution")(function* () {
       yield* Ref.update(extended, (m) => ({ ...m, specialistExecutionCount: m.specialistExecutionCount + 1 }))
     })
@@ -573,6 +631,18 @@ const layer = Layer.effect(
       yield* Ref.update(extended, (m) => ({ ...m, executionPackageSizeBytes: bytes }))
     })
 
+    const recordApplicationAnalysis = Effect.fn("RuntimeMetrics.recordApplicationAnalysis")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, applicationAnalysisCount: m.applicationAnalysisCount + 1 }))
+    })
+
+    const recordApplicationDiscovery = Effect.fn("RuntimeMetrics.recordApplicationDiscovery")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, applicationDiscoveryCount: m.applicationDiscoveryCount + 1 }))
+    })
+
+    const recordApplicationReport = Effect.fn("RuntimeMetrics.recordApplicationReport")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, applicationReportCount: m.applicationReportCount + 1 }))
+    })
+
     const getExtended = Ref.get(extended)
 
     return Service.of({
@@ -592,6 +662,8 @@ const layer = Layer.effect(
       recordExecutionRecommendation, recordKnowledgeQuality,
       recordCatalogRefresh, recordRanking, recordSelection,
       recordSelectionCacheHit, recordSelectionCacheMiss, recordFallback,
+      recordModelRecommendation, recordProviderRecommendation, recordCapabilityMatch,
+      recordEstimatedCost, recordEstimatedLatency, recordContextUtilization, recordExecutionStrategy,
       recordSpecialistExecution, recordCloudExecution, recordKnowledgeExchange,
       recordConsensusRound, recordRecovery, recordCancellation,
       recordBudgetExceeded, recordAdaptation, recordParallelExecution,
@@ -599,6 +671,7 @@ const layer = Layer.effect(
       recordProviderUtilisation, recordBudgetConsumption,
       recordReusedSummary, recordReusedConnectorPlan, recordReusedWorkflow,
       recordSkippedPreparation, recordContextCompressionRatio, recordExecutionPackageSize,
+      recordApplicationAnalysis, recordApplicationDiscovery, recordApplicationReport,
       getExtended,
     })
   }),

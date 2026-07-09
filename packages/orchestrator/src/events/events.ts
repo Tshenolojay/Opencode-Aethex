@@ -179,6 +179,79 @@ export const ExecutionOptimized = Event.define({
   },
 })
 
+export const LearningCycleCompleted = Event.define({
+  type: "orchestrator.learning-cycle-completed",
+  schema: {
+    sessionID: Schema.String,
+    cycleNumber: Schema.Finite,
+    recommendationsCount: Schema.Finite,
+    confidenceAdjustments: Schema.Finite,
+    planningImprovements: Schema.Finite,
+  },
+})
+
+export const DecisionOptimized = Event.define({
+  type: "orchestrator.decision-optimized",
+  schema: {
+    sessionID: Schema.String,
+    decisionType: Schema.String,
+    previousStrategy: Schema.String,
+    optimizedStrategy: Schema.String,
+    improvementRationale: Schema.String,
+  },
+})
+
+export const WorkflowImproved = Event.define({
+  type: "orchestrator.workflow-improved",
+  schema: {
+    sessionID: Schema.String,
+    workflowLabel: Schema.String,
+    previousScore: Schema.Finite,
+    newScore: Schema.Finite,
+  },
+})
+
+export const PlanningOptimized = Event.define({
+  type: "orchestrator.planning-optimized",
+  schema: {
+    sessionID: Schema.String,
+    optimizations: Schema.Finite,
+    specialistOrderingChanged: Schema.Boolean,
+    workflowOrderingChanged: Schema.Boolean,
+  },
+})
+
+export const ConfidenceImproved = Event.define({
+  type: "orchestrator.confidence-improved",
+  schema: {
+    sessionID: Schema.String,
+    factorName: Schema.String,
+    previousWeight: Schema.Finite,
+    newWeight: Schema.Finite,
+    observationCount: Schema.Finite,
+  },
+})
+
+export const KnowledgeFeedbackRecorded = Event.define({
+  type: "orchestrator.knowledge-feedback-recorded",
+  schema: {
+    sessionID: Schema.String,
+    domain: Schema.String,
+    wasUsed: Schema.Boolean,
+    wasReused: Schema.Boolean,
+  },
+})
+
+export const ExecutionFeedbackRecorded = Event.define({
+  type: "orchestrator.execution-feedback-recorded",
+  schema: {
+    sessionID: Schema.String,
+    workflowLabel: Schema.String,
+    durationMs: Schema.Finite,
+    completed: Schema.Boolean,
+  },
+})
+
 export const PromptEnhanced = Event.define({
   type: "orchestrator.prompt-enhanced",
   schema: {
@@ -442,6 +515,53 @@ export const SpecialistRegistered = Event.define({
   },
 })
 
+export const ExecutionStrategyPrepared = Event.define({
+  type: "orchestrator.execution-strategy-prepared",
+  schema: {
+    sessionID: Schema.String,
+    strategy: Schema.String,
+    taskType: Schema.String,
+    complexity: Schema.Finite,
+    confidence: Schema.Finite,
+  },
+})
+
+export const CapabilityMatched = Event.define({
+  type: "orchestrator.capability-matched",
+  schema: {
+    sessionID: Schema.String,
+    requestedCapabilities: Schema.Array(Schema.String),
+    matchedCapabilities: Schema.Array(Schema.String),
+    missingCapabilities: Schema.Array(Schema.String),
+    matchScore: Schema.Finite,
+  },
+})
+
+export const ModelHealthUpdated = Event.define({
+  type: "orchestrator.model-health-updated",
+  schema: {
+    sessionID: Schema.String,
+    modelID: Schema.String,
+    providerID: Schema.String,
+    healthScore: Schema.Finite,
+    availabilityCount: Schema.Finite,
+    failureCount: Schema.Finite,
+  },
+})
+
+export const RoutingCompleted = Event.define({
+  type: "orchestrator.routing-completed",
+  schema: {
+    sessionID: Schema.String,
+    selectedModelID: Schema.String,
+    selectedProviderID: Schema.String,
+    strategy: Schema.String,
+    executionPlan: Schema.String,
+    capabilityCount: Schema.Finite,
+    fallbackReady: Schema.Boolean,
+  },
+})
+
 export const SpecialistActivated = Event.define({
   type: "orchestrator.specialist-activated",
   schema: {
@@ -603,6 +723,49 @@ export const CatalogRefreshed = Event.define({
     newModelCount: Schema.Finite,
     deprecatedModelCount: Schema.Finite,
     refreshDurationMs: Schema.Finite,
+  },
+})
+
+export const ApplicationProfiled = Event.define({
+  type: "orchestrator.application-profiled",
+  schema: {
+    sessionID: Schema.String,
+    applicationType: Schema.String,
+    businessDomain: Schema.String,
+    moduleCount: Schema.Finite,
+    capabilityCount: Schema.Finite,
+  },
+})
+
+export const ApplicationAnalyzed = Event.define({
+  type: "orchestrator.application-analyzed",
+  schema: {
+    sessionID: Schema.String,
+    workflowCount: Schema.Finite,
+    capabilityCount: Schema.Finite,
+    integrationPointCount: Schema.Finite,
+  },
+})
+
+export const ApplicationDiscovered = Event.define({
+  type: "orchestrator.application-discovered",
+  schema: {
+    sessionID: Schema.String,
+    detectedType: Schema.String,
+    detectedDomain: Schema.String,
+    detectedModuleCount: Schema.Finite,
+  },
+})
+
+export const ApplicationIntelligenceReported = Event.define({
+  type: "orchestrator.application-intelligence-reported",
+  schema: {
+    sessionID: Schema.String,
+    applicationName: Schema.String,
+    moduleCount: Schema.Finite,
+    workflowCount: Schema.Finite,
+    capabilityCount: Schema.Finite,
+    serviceCount: Schema.Finite,
   },
 })
 
@@ -803,4 +966,19 @@ export const Definitions = [
   RuntimeReasoningReused,
   RuntimeReasoningCompressed,
   RuntimeNarrativeUpdated,
+  LearningCycleCompleted,
+  DecisionOptimized,
+  WorkflowImproved,
+  PlanningOptimized,
+  ConfidenceImproved,
+  KnowledgeFeedbackRecorded,
+   ExecutionFeedbackRecorded,
+  ExecutionStrategyPrepared,
+  CapabilityMatched,
+  ModelHealthUpdated,
+  RoutingCompleted,
+  ApplicationProfiled,
+  ApplicationAnalyzed,
+  ApplicationDiscovered,
+  ApplicationIntelligenceReported,
 ] as const

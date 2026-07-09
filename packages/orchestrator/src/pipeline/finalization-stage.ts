@@ -4,6 +4,8 @@ import type { OrchestrationDecision } from "../contracts/service"
 import { AgentDispatcher } from "../dispatcher/dispatcher"
 import { KnowledgeBundle } from "../knowledge/knowledge"
 import type { TimingInfo } from "../types/metadata"
+import { LearningEngine } from "../learning/learning-engine"
+import { LearningMetrics } from "../learning/learning-metrics"
 
 export interface PipelineOutput {
   readonly decision: OrchestrationDecision
@@ -68,10 +70,44 @@ export const runFinalizationStage = Effect.fn("Pipeline.finalization")(function*
     planningPolicy: state.policy,
   }
 
+  const learningEngine = yield* LearningEngine.Service
+
+  yield* learningEngine.observeDecision({
+    sessionID: state.input.sessionID,
+    timestamp: Date.now(),
+    decisionType: "planning",
+    decisionLabel: state.policy?.policy ?? "default",
+    expectedOutcome: state.confidenceLevel,
+    actualOutcome: runnerFailed === 0 ? "success" : runnerFailed > runnerCompleted ? "failure" : "partial",
+    outcomeLabel: runnerFailed === 0 ? "success" : runnerFailed > runnerCompleted ? "failure" : "partial",
+    context: { taskType: state.classification.type, complexity: state.classification.complexity },
+    metadata: { specialistCount: state.specialistPlan?.selected.length ?? 0, connectorCount: state.knowledgePlan?.requests.length ?? 0 },
+  })
+
+  yield* learningEngine.observeDecision({
+    sessionID: state.input.sessionID,
+    timestamp: Date.now(),
+    decisionType: "workflow",
+    decisionLabel: "orchestration-pipeline",
+    expectedOutcome: "completed",
+    actualOutcome: runnerFailed === 0 ? "completed" : "partial",
+    outcomeLabel: runnerFailed === 0 ? "success" : "failure",
+    context: { taskType: state.classification.type },
+    metadata: { completed: runnerCompleted, failed: runnerFailed },
+  })
+
+  yield* learningEngine.runLearningCycle
+
+  const learningMetrics = yield* LearningMetrics.Service
+  const metrics = yield* learningMetrics.getMetrics()
+
   return {
     decision,
     timing,
-    diagnostics,
+    diagnostics: [
+      ...diagnostics,
+      { phase: "learning-cycle", durationMs: 0, result: `cycle=${metrics.learningCycleCount} optimized=${metrics.optimizedDecisions}`, error: undefined },
+    ],
     executionGraph: undefined,
     executionPackage: state.executionPackage,
   } as PipelineOutput

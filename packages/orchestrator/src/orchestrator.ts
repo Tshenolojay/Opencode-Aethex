@@ -40,6 +40,15 @@ import { AgentSelectionAdvice as AgentSelectionAdviceService } from "./integrati
 import { PromptAugmentation as PromptAugmentationService } from "./integration/prompt-augmentation"
 import { AgentEnhancer } from "./integration/agent-enhancer"
 import { AgentAdapter } from "./integration/agent-adapter"
+import { ApplicationProfile } from "./application/application-profile"
+import { ApplicationAnalyzer } from "./application/application-analyzer"
+import { ApplicationCapabilities } from "./application/application-capabilities"
+import { ApplicationWorkflows } from "./application/application-workflows"
+import { ApplicationServices } from "./application/application-services"
+import { ApplicationConnectors } from "./application/application-connectors"
+import { ApplicationContext } from "./application/application-context"
+import { ApplicationDiscovery } from "./application/application-discovery"
+import { ApplicationIntelligence } from "./application/application-intelligence"
 import { ExecutionAdvisor } from "./intelligence/execution-advisor"
 import { ContextCompressor } from "./intelligence/context-compressor"
 import { RuntimeMetrics } from "./runtime/runtime-metrics"
@@ -93,6 +102,26 @@ import { ProviderRanking } from "./model/provider-ranking"
 import { ModelRanking } from "./model/model-ranking"
 import { SelectionCache } from "./model/selection-cache"
 import { SelectionPolicies } from "./model/selection-policies"
+import { ModelProfile } from "./model/model-profile"
+import { ModelHealth } from "./model/model-health"
+import { ModelCapabilities } from "./model/model-capabilities"
+import { ModelRequirements } from "./model/model-requirements"
+import { ProviderAdapter } from "./model/provider-adapter"
+import { ProviderHealth } from "./model/provider-health"
+import { FallbackStrategy } from "./model/fallback-strategy"
+import { ExecutionStrategy } from "./model/execution-strategy"
+import { CostEstimator } from "./model/cost-estimator"
+import { LatencyEstimator } from "./model/latency-estimator"
+import { ContextEstimator } from "./model/context-estimator"
+import { LearningEngine } from "./learning/learning-engine"
+import { DecisionHistory } from "./learning/decision-history"
+import { StrategyEvaluator } from "./learning/strategy-evaluator"
+import { WorkflowLearning } from "./learning/workflow-learning"
+import { ConfidenceLearning } from "./learning/confidence-learning"
+import { PlanningOptimizer } from "./learning/planning-optimizer"
+import { KnowledgeFeedback } from "./learning/knowledge-feedback"
+import { ExecutionFeedback } from "./learning/execution-feedback"
+import { LearningMetrics } from "./learning/learning-metrics"
 
 export interface PhaseEntry {
   readonly phase: string
@@ -444,6 +473,15 @@ const layer = Layer.effect(
       RuntimeCache.layer,
       RuntimeValidator.layer,
       RuntimeFallback.layer,
+      ApplicationProfile.layer,
+      ApplicationAnalyzer.layer,
+      ApplicationCapabilities.layer,
+      ApplicationWorkflows.layer,
+      ApplicationServices.layer,
+      ApplicationConnectors.layer,
+      ApplicationContext.layer,
+      ApplicationDiscovery.layer,
+      ApplicationIntelligence.layer,
       ExecutionSummaryView.layer,
       RepositoryView.layer,
       ArchitectureView.layer,
@@ -464,6 +502,26 @@ const layer = Layer.effect(
       SelectionCache.layer,
       SelectionPolicies.layer,
       ModelSelector.layer,
+      ModelProfile.layer,
+      ModelHealth.layer,
+      ModelCapabilities.layer,
+      ModelRequirements.layer,
+      ProviderAdapter.layer,
+      ProviderHealth.layer,
+      FallbackStrategy.layer,
+      ExecutionStrategy.layer,
+      CostEstimator.layer,
+      LatencyEstimator.layer,
+      ContextEstimator.layer,
+      LearningEngine.layer,
+      DecisionHistory.layer,
+      StrategyEvaluator.layer,
+      WorkflowLearning.layer,
+      ConfidenceLearning.layer,
+      PlanningOptimizer.layer,
+      KnowledgeFeedback.layer,
+      ExecutionFeedback.layer,
+      LearningMetrics.layer,
     ),
   ),
 )

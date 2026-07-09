@@ -107,8 +107,12 @@ export interface SpecialistProfile {
   readonly reviewResponsibilities: readonly string[] | undefined
   readonly approvalRequirements: readonly string[] | undefined
   readonly memoryRequirements: readonly string[] | undefined
-  readonly cachePolicy: string | undefined
-  readonly collaborationRules: readonly string[] | undefined
+  readonly cachePolicy?: string
+  readonly preferredExecutionStrategy?: string
+  readonly preferredModelCharacteristics?: readonly string[]
+  readonly primaryCapabilities?: readonly string[]
+  readonly minimumCapabilities?: readonly string[]
+  readonly collaborationRules?: readonly string[]
   readonly validationRules: readonly string[] | undefined
   readonly metrics: readonly string[] | undefined
   readonly diagnostics: readonly string[] | undefined

@@ -355,6 +355,8 @@ import type { AgentHints } from "./agent-hints"
 import type { AgentSelectionAdvice } from "./agent-selection-advice"
 import type { PromptAugmentation } from "./prompt-augmentation"
 import type { AgentContextProfile } from "./agent-context"
+import type { ApplicationProfile } from "../application/application-profile"
+import type { ApplicationSummary, WorkflowCatalog, CapabilityCatalog, ServiceCatalog, ModuleCatalog, IntelligenceReport } from "../application/application-intelligence"
 
 export interface ExecutionPackage {
   readonly sessionID: string
@@ -418,6 +420,14 @@ export interface ExecutionPackage {
   readonly connectorResults: readonly ConnectorResult[] | undefined
   readonly connectorMetadata: ConnectorMetadata | undefined
   readonly reusableKnowledgeSources: readonly KnowledgeSourceType[] | undefined
+
+  readonly applicationProfile: ApplicationProfile | undefined
+  readonly applicationSummary: ApplicationSummary | undefined
+  readonly workflowCatalog: WorkflowCatalog | undefined
+  readonly capabilityCatalog: CapabilityCatalog | undefined
+  readonly serviceCatalog: ServiceCatalog | undefined
+  readonly moduleCatalog: ModuleCatalog | undefined
+  readonly intelligenceReport: IntelligenceReport | undefined
 }
 
 export function empty(sessionID: string): ExecutionPackage {
@@ -498,5 +508,12 @@ export function empty(sessionID: string): ExecutionPackage {
     connectorResults: undefined,
     connectorMetadata: undefined,
     reusableKnowledgeSources: undefined,
+    applicationProfile: undefined,
+    applicationSummary: undefined,
+    workflowCatalog: undefined,
+    capabilityCatalog: undefined,
+    serviceCatalog: undefined,
+    moduleCatalog: undefined,
+    intelligenceReport: undefined,
   }
 }
