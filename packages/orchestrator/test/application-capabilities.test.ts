@@ -3,8 +3,8 @@ import { Effect, Layer } from "effect"
 import { ApplicationCapabilities } from "../src/application/application-capabilities"
 
 const layer = Layer.mergeAll(ApplicationCapabilities.layer)
-const run = <A, E>(effect: Effect.Effect<A, E>) =>
-  Effect.runPromise(effect.pipe(Effect.provide(layer)))
+const run = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.runPromise(effect.pipe(Effect.provide(layer)) as Effect.Effect<A, E>)
 
 test("getAvailableCapabilities returns built-in capabilities", async () => {
   const caps = await run(

@@ -159,3 +159,21 @@ const table = sqliteTable("session", {
 - Keep delivery vocabulary explicit. Prompts steer by default and promote at the next safe provider-turn boundary while the current drain requires continuation. An explicit `queue` input remains pending until the Session would otherwise become idle; promote one queued input at that boundary, then reevaluate continuation before promoting another. Promoting any new user input resets the selected agent's provider-turn allowance; a batch of steers resets it once.
 - Keep EventV2 replay owner claims separate from clustered Session execution ownership.
 - Keep the System Context algebra, registry, and built-ins in `src/system-context`; keep Context Source producers with their observed domains, and keep Session History selection plus Context Epoch persistence Session-owned.
+
+## Anchored Summary
+
+Phase 15 is complete: 9 application modules under `src/application/` (profile, analyzer, capabilities, workflows, services, connectors, context, discovery, intelligence) are built and tested. ExecutionPackage has 7 optional application fields; events have 4 new application events; RuntimeMetrics has 3 new counters. All 9 layers are wired into orchestrator.ts. 37 tests pass.
+
+### Key Layer Pattern (Effect v4 beta.83)
+
+`Layer.mergeAll` does NOT cross-satisfy internal requirements. Use `Layer.provideMerge` for dependent layers:
+```ts
+// Good - local provideMerge satisfies deps before mergeAll
+const layer = Layer.mergeAll(
+  ApplicationProfile.layer,
+  ApplicationAnalyzer.layer.pipe(Layer.provideMerge(ApplicationProfile.layer)),
+  ApplicationIntelligence.layer, // uses Effect.succeed, yields services at call time
+)
+```
+
+The Intelligence layer uses `Effect.succeed` with services yielded inside each `Effect.fn` at method call time, keeping the layer requirement-free at construction.

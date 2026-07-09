@@ -3,8 +3,8 @@ import { Effect, Layer } from "effect"
 import { ApplicationContext } from "../src/application/application-context"
 
 const layer = Layer.mergeAll(ApplicationContext.layer)
-const run = <A, E>(effect: Effect.Effect<A, E>) =>
-  Effect.runPromise(effect.pipe(Effect.provide(layer)))
+const run = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.runPromise(effect.pipe(Effect.provide(layer)) as Effect.Effect<A, E>)
 
 test("getSnapshot returns default state", async () => {
   const snapshot = await run(

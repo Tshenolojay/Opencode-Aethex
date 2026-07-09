@@ -3,8 +3,8 @@ import { Effect, Layer } from "effect"
 import { ApplicationConnectors } from "../src/application/application-connectors"
 
 const layer = Layer.mergeAll(ApplicationConnectors.layer)
-const run = <A, E>(effect: Effect.Effect<A, E>) =>
-  Effect.runPromise(effect.pipe(Effect.provide(layer)))
+const run = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.runPromise(effect.pipe(Effect.provide(layer)) as Effect.Effect<A, E>)
 
 test("register and get connector", async () => {
   const connector = await run(

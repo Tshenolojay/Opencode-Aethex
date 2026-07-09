@@ -4,8 +4,8 @@ import { ApplicationProfile } from "../src/application/application-profile"
 import { ApplicationAnalyzer } from "../src/application/application-analyzer"
 
 const layer = ApplicationAnalyzer.layer.pipe(Layer.provideMerge(ApplicationProfile.layer))
-const run = <A, E>(effect: Effect.Effect<A, E>) =>
-  Effect.runPromise(effect.pipe(Effect.provide(layer)))
+const run = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.runPromise(effect.pipe(Effect.provide(layer)) as Effect.Effect<A, E>)
 
 test("analyze returns structure with registered profile", async () => {
   const result = await run(
@@ -16,8 +16,9 @@ test("analyze returns structure with registered profile", async () => {
         name: "App",
         version: "1.0.0",
         applicationType: "web",
-        businessDomain: "ecommerce",
-        modules: [{ name: "ModuleA", description: "First module", enabled: true }],
+        businessDomain: "commerce",
+        description: "Ecommerce app",
+        modules: [{ name: "ModuleA", version: "1.0.0", description: "First module", enabled: true, capabilities: [] }],
         capabilities: ["commerce", "crm"],
         supportedWorkflows: ["order-processing", "customer-support"],
         permissions: [],
@@ -28,7 +29,7 @@ test("analyze returns structure with registered profile", async () => {
   )
   expect(result.architecture.length).toBeGreaterThanOrEqual(1)
   expect(result.businessLogic.length).toBe(1)
-  expect(result.businessLogic[0].domain).toBe("ecommerce")
+  expect(result.businessLogic[0].domain).toBe("commerce")
   expect(result.moduleRelationships.length).toBe(0)
   expect(result.integrationPoints.length).toBe(2)
   expect(result.workflowCount).toBe(2)
@@ -45,9 +46,10 @@ test("analyze with multiple modules creates relationships", async () => {
         version: "1.0.0",
         applicationType: "web",
         businessDomain: "general",
+        description: "Multi-module app",
         modules: [
-          { name: "ModuleA", description: "First", enabled: true },
-          { name: "ModuleB", description: "Second", enabled: true },
+          { name: "ModuleA", version: "1.0.0", description: "First", enabled: true, capabilities: [] },
+          { name: "ModuleB", version: "1.0.0", description: "Second", enabled: true, capabilities: [] },
         ],
         capabilities: [],
         supportedWorkflows: [],

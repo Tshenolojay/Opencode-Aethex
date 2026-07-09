@@ -3,8 +3,8 @@ import { Effect, Layer } from "effect"
 import { ApplicationServices } from "../src/application/application-services"
 
 const layer = Layer.mergeAll(ApplicationServices.layer)
-const run = <A, E>(effect: Effect.Effect<A, E>) =>
-  Effect.runPromise(effect.pipe(Effect.provide(layer)))
+const run = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.runPromise(effect.pipe(Effect.provide(layer)) as Effect.Effect<A, E>)
 
 test("register and getAll services", async () => {
   const services = await run(

@@ -4,8 +4,8 @@ import { ApplicationProfile } from "../src/application/application-profile"
 import { ApplicationDiscovery } from "../src/application/application-discovery"
 
 const layer = ApplicationDiscovery.layer.pipe(Layer.provideMerge(ApplicationProfile.layer))
-const run = <A, E>(effect: Effect.Effect<A, E>) =>
-  Effect.runPromise(effect.pipe(Effect.provide(layer)))
+const run = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.runPromise(effect.pipe(Effect.provide(layer)) as Effect.Effect<A, E>)
 
 test("discover returns result from registered profile", async () => {
   const result = await run(
@@ -15,8 +15,9 @@ test("discover returns result from registered profile", async () => {
         name: "DiscoveryApp",
         version: "1.0.0",
         applicationType: "mobile",
-        businessDomain: "social",
-        modules: [{ name: "FeedModule", description: "User feed", enabled: true }],
+        businessDomain: "communication",
+        description: "Social app",
+        modules: [{ name: "FeedModule", version: "1.0.0", description: "User feed", enabled: true, capabilities: [] }],
         capabilities: ["messaging", "analytics"],
         supportedWorkflows: ["research"],
         permissions: [],
@@ -27,7 +28,7 @@ test("discover returns result from registered profile", async () => {
     }),
   )
   expect(result.detectedType).toBe("mobile")
-  expect(result.detectedDomain).toBe("social")
+  expect(result.detectedDomain).toBe("communication")
   expect(result.detectedModules.length).toBe(1)
   expect(result.detectedModules[0].name).toBe("FeedModule")
   expect(result.detectedCapabilities).toContain("messaging")
@@ -55,9 +56,10 @@ test("scanModules returns modules from profile", async () => {
         version: "1.0.0",
         applicationType: "web",
         businessDomain: "general",
+        description: "App with modules",
         modules: [
-          { name: "M1", description: "One", enabled: true },
-          { name: "M2", description: "Two", enabled: false },
+          { name: "M1", version: "1.0.0", description: "One", enabled: true, capabilities: [] },
+          { name: "M2", version: "1.0.0", description: "Two", enabled: false, capabilities: [] },
         ],
         capabilities: [],
         supportedWorkflows: [],
@@ -79,7 +81,8 @@ test("inferDomain returns domain from profile", async () => {
         name: "App",
         version: "1.0.0",
         applicationType: "web",
-        businessDomain: "healthcare",
+        businessDomain: "analytics",
+        description: "Analytics domain app",
         modules: [],
         capabilities: [],
         supportedWorkflows: [],
@@ -90,5 +93,5 @@ test("inferDomain returns domain from profile", async () => {
       return yield* discovery.inferDomain()
     }),
   )
-  expect(domain).toBe("healthcare")
+  expect(domain).toBe("analytics")
 })

@@ -3,8 +3,8 @@ import { Effect, Layer } from "effect"
 import { ApplicationProfile } from "../src/application/application-profile"
 
 const layer = Layer.mergeAll(ApplicationProfile.layer)
-const run = <A, E>(effect: Effect.Effect<A, E>) =>
-  Effect.runPromise(effect.pipe(Effect.provide(layer)))
+const run = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.runPromise(effect.pipe(Effect.provide(layer)) as Effect.Effect<A, E>)
 
 test("register and get profile", async () => {
   const profile = await run(
@@ -14,7 +14,8 @@ test("register and get profile", async () => {
         name: "MyApp",
         version: "1.0.0",
         applicationType: "web",
-        businessDomain: "ecommerce",
+        businessDomain: "commerce",
+        description: "My application",
         modules: [],
         capabilities: [],
         supportedWorkflows: [],
@@ -27,7 +28,7 @@ test("register and get profile", async () => {
   expect(profile).toBeDefined()
   expect(profile!.name).toBe("MyApp")
   expect(profile!.applicationType).toBe("web")
-  expect(profile!.businessDomain).toBe("ecommerce")
+  expect(profile!.businessDomain).toBe("commerce")
 })
 
 test("get returns undefined before registration", async () => {
@@ -49,13 +50,25 @@ test("update profile", async () => {
         version: "1.0.0",
         applicationType: "web",
         businessDomain: "general",
+        description: "Test app",
         modules: [],
         capabilities: [],
         supportedWorkflows: [],
         permissions: [],
         executionBoundaries: [],
       })
-      yield* svc.update({ name: "App1 Updated" })
+      yield* svc.update({
+        name: "App1 Updated",
+        version: "1.0.0",
+        applicationType: "web",
+        businessDomain: "general",
+        description: "Updated app",
+        modules: [],
+        capabilities: [],
+        supportedWorkflows: [],
+        permissions: [],
+        executionBoundaries: [],
+      })
       return yield* svc.get()
     }),
   )
@@ -71,6 +84,7 @@ test("getApplicationType", async () => {
         version: "1.0.0",
         applicationType: "desktop",
         businessDomain: "general",
+        description: "Desktop app",
         modules: [],
         capabilities: [],
         supportedWorkflows: [],
@@ -91,7 +105,8 @@ test("getBusinessDomain", async () => {
         name: "App",
         version: "1.0.0",
         applicationType: "web",
-        businessDomain: "healthcare",
+        businessDomain: "analytics",
+        description: "Analytics app",
         modules: [],
         capabilities: [],
         supportedWorkflows: [],
@@ -101,5 +116,5 @@ test("getBusinessDomain", async () => {
       return yield* svc.getBusinessDomain()
     }),
   )
-  expect(domain).toBe("healthcare")
+  expect(domain).toBe("analytics")
 })

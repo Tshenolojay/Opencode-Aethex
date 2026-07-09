@@ -3,8 +3,8 @@ import { Effect, Layer } from "effect"
 import { ApplicationWorkflows } from "../src/application/application-workflows"
 
 const layer = Layer.mergeAll(ApplicationWorkflows.layer)
-const run = <A, E>(effect: Effect.Effect<A, E>) =>
-  Effect.runPromise(effect.pipe(Effect.provide(layer)))
+const run = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.runPromise(effect.pipe(Effect.provide(layer)) as Effect.Effect<A, E>)
 
 test("getWorkflows returns built-in workflows", async () => {
   const wfs = await run(
