@@ -1,129 +1,137 @@
 <p align="center">
-  <a href="https://opencode.ai">
+  <a href="https://github.com/Tshenolojay/Opencode-Nexus">
     <picture>
       <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
       <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="OpenCode logo">
+      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="Opencode-Nexus logo">
     </picture>
   </a>
 </p>
-<p align="center">The open source AI coding agent.</p>
+<p align="center">The open source AI coding agent — extended with an intelligent orchestration engine.</p>
 <p align="center">
-  <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/opencode-ai"><img alt="npm" src="https://img.shields.io/npm/v/opencode-ai?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/opencode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/opencode/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="https://github.com/Tshenolojay/Opencode-Nexus">Opencode-Nexus</a> is a fork of
+  <a href="https://github.com/anomalyco/opencode">OpenCode</a> with a task-level orchestration layer.
 </p>
-
-<p align="center">
-  <a href="README.md">English</a> |
-  <a href="README.zh.md">简体中文</a> |
-  <a href="README.zht.md">繁體中文</a> |
-  <a href="README.ko.md">한국어</a> |
-  <a href="README.de.md">Deutsch</a> |
-  <a href="README.es.md">Español</a> |
-  <a href="README.fr.md">Français</a> |
-  <a href="README.it.md">Italiano</a> |
-  <a href="README.da.md">Dansk</a> |
-  <a href="README.ja.md">日本語</a> |
-  <a href="README.pl.md">Polski</a> |
-  <a href="README.ru.md">Русский</a> |
-  <a href="README.bs.md">Bosanski</a> |
-  <a href="README.ar.md">العربية</a> |
-  <a href="README.no.md">Norsk</a> |
-  <a href="README.br.md">Português (Brasil)</a> |
-  <a href="README.th.md">ไทย</a> |
-  <a href="README.tr.md">Türkçe</a> |
-  <a href="README.uk.md">Українська</a> |
-  <a href="README.bn.md">বাংলা</a> |
-  <a href="README.gr.md">Ελληνικά</a> |
-  <a href="README.vi.md">Tiếng Việt</a>
-</p>
-
-[![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
 ---
 
-### Installation
+## What is Opencode-Nexus?
+
+Opencode-Nexus is **OpenCode** (the open source AI coding agent) plus the **Orchestration Engine** — an intelligent layer that sits in front of task execution and decides *how* a task should be done before any agent runs.
+
+For every prompt it:
+
+1. **Classifies** the task (type, complexity, what capabilities it needs).
+2. **Estimates confidence** — if confidence is high, the task skips orchestration and runs directly.
+3. **Plans capabilities** required and matches them to **specialist agents**.
+4. **Builds a dispatch / execution plan** and **augments the prompt** with the knowledge those specialists need.
+
+This lets complex work route itself to the right agents and models automatically, while simple work stays fast.
+
+## Installation
+
+Opencode-Nexus is built from this repository (it is a fork of OpenCode, so it shares OpenCode's tooling).
 
 ```bash
-# YOLO
-curl -fsSL https://opencode.ai/install | bash
+# Prerequisites: Bun (https://bun.sh) and Node 20+
+git clone https://github.com/Tshenolojay/Opencode-Nexus.git
+cd Opencode-Nexus
+bun install
+bun turbo build
 
-# Package managers
-npm i -g opencode-ai@latest        # or bun/pnpm/yarn
-scoop install opencode             # Windows
-choco install opencode             # Windows
-brew install anomalyco/tap/opencode # macOS and Linux (recommended, always up to date)
-brew install opencode              # macOS and Linux (official brew formula, updated less)
-sudo pacman -S opencode            # Arch Linux (Stable)
-paru -S opencode-bin               # Arch Linux (Latest from AUR)
-mise use -g opencode               # Any OS
-nix run nixpkgs#opencode           # or github:anomalyco/opencode for latest dev branch
+# Run the agent from a project directory
+bun run --cwd packages/opencode opencode
 ```
 
-> [!TIP]
-> Remove versions older than 0.1.x before installing.
+Upstream OpenCode install methods (`brew`, `npm i -g opencode-ai`, etc.) install the base agent without the orchestration engine — use the build above to get the fork.
 
-### Desktop App (BETA)
+> **Tip:** Remove OpenCode versions older than `0.1.x` before installing.
 
-OpenCode is also available as a desktop application. Download directly from the [releases page](https://github.com/anomalyco/opencode/releases) or [opencode.ai/download](https://opencode.ai/download).
+### Desktop App
 
-| Platform              | Download                           |
-| --------------------- | ---------------------------------- |
-| macOS (Apple Silicon) | `opencode-desktop-mac-arm64.dmg`   |
-| macOS (Intel)         | `opencode-desktop-mac-x64.dmg`     |
-| Windows               | `opencode-desktop-windows-x64.exe` |
-| Linux                 | `.deb`, `.rpm`, or `.AppImage`     |
+OpenCode's desktop app builds are available from the upstream
+[releases page](https://github.com/anomalyco/opencode/releases).
 
-```bash
-# macOS (Homebrew)
-brew install --cask opencode-desktop
-# Windows (Scoop)
-scoop bucket add extras; scoop install extras/opencode-desktop
-```
+The orchestration engine is a library layer (`@opencode-ai/orchestrator`) that integrates with the agent through its `integration` surfaces (`ExecutionPackage`, `AgentContext`, `PromptAugmentation`, `AgentAdapter`) — see [Orchestration Engine](#orchestration-engine).
 
-#### Installation Directory
+## Orchestration Engine
 
-The install script respects the following priority order for the installation path:
+The engine lives in **`packages/orchestrator`** (`@opencode-ai/orchestrator`) and is described as:
 
-1. `$OPENCODE_INSTALL_DIR` - Custom installation directory
-2. `$XDG_BIN_DIR` - XDG Base Directory Specification compliant path
-3. `$HOME/bin` - Standard user binary directory (if it exists or can be created)
-4. `$HOME/.opencode/bin` - Default fallback
+> *Intelligent orchestration layer for OpenCode — task classification, confidence estimation, agent dispatch, and prompt augmentation.*
 
-```bash
-# Examples
-OPENCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://opencode.ai/install | bash
-XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://opencode.ai/install | bash
-```
+### The `orchestrate` flow
 
-### Agents
+`OrchestratorService.orchestrate(input)` runs a pipeline:
 
-OpenCode includes two built-in agents you can switch between with the `Tab` key.
+| Stage | Layer | Responsibility |
+| --- | --- | --- |
+| Task classification | `classifier` | Classify prompt into a task type + complexity + required signals |
+| Confidence estimation | `confidence` | Estimate confidence; **high confidence → skip orchestration** |
+| Capability estimation | `selector` (`model`) | Estimate required model/agent capabilities |
+| Capability planning | `planner` | Plan the capabilities the task needs |
+| Specialist matching | `specialists` | Match registered specialists to required capabilities |
+| Planning policy | `planner` | Evaluate limits (e.g. max specialists) |
+| Dispatch planning | `dispatcher` | Plan which agents to dispatch and what context they need |
+| Knowledge planning | `planner` / `knowledge` | Plan the knowledge bundle (search / context / dependency / verification) |
 
-- **build** - Default, full-access agent for development work
-- **plan** - Read-only agent for analysis and code exploration
-  - Denies file edits by default
-  - Asks permission before running bash commands
-  - Ideal for exploring unfamiliar codebases or planning changes
+The result is an `OrchestrationDecision`: whether orchestration is needed, the task classification, the confidence score, the dispatch plan, the capability plan, the knowledge plan, and the specialist plan.
 
-Also included is a **general** subagent for complex searches and multistep tasks.
-This is used internally and can be invoked using `@general` in messages.
+A richer entry point, `orchestrateWithContext`, runs the full multi-stage pipeline (`pipeline/runAllStages`) and returns timing/diagnostics, an execution graph, and an `ExecutionPackage`.
 
-Learn more about [agents](https://opencode.ai/docs/agents).
+### Architecture (layered)
 
-### Documentation
+The engine is organized as composable Effect layers. The major subsystems:
 
-For more info on how to configure OpenCode, [**head over to our docs**](https://opencode.ai/docs).
+- **`classifier`** — task classification (`TaskClassifier`, classification schema).
+- **`confidence`** — confidence estimation that gates whether orchestration runs at all.
+- **`dispatcher`** — agent dispatch planning (`AgentDispatcher`).
+- **`selector` / `model`** — model & provider selection: capability registry/discovery, provider & model ranking, selection cache/policies, profiles, health, cost/latency/context estimators, fallback & execution strategy, provider adapters.
+- **`planner`** — capability planning, knowledge planning, planning policy, planning memory, execution-graph building.
+- **`specialists`** — specialist registry and runner.
+- **`execution`** — model assignment, context building, specialist execution, execution scheduling, failure recovery.
+- **`knowledge`** — knowledge bundles and collection/merging.
+- **`runtime`** — runtime manager, context, cache, validator, fallback.
+- **`prompts`** — prompt building.
+- **`intelligence`** — repository, context, dependency, documentation, architecture, and verification intelligence; knowledge validation; ranking; execution advising; context compression.
+- **`reasoning`** — reasoning building, specialist consensus, execution narrative, decision engine, reasoning memory.
+- **`team`** — virtual team, task decomposition, work allocation, team coordination, shared workspace, team discussion, review pipeline, capability marketplace.
+- **`connectors`** — connector coordination and knowledge/repository/documentation/conversation/tool-history connectors + knowledge-source registry.
+- **`collaboration`** — collaboration policy, consensus engine, conflict resolution, discussion moderation, peer review, shared workspace, specialist coordination, scoreboard/memory, review management, collaboration sessions.
+- **`learning`** — learning engine, decision history, strategy evaluation, workflow/confidence/planning learning, knowledge/execution feedback, learning metrics.
+- **`application`** — application-level modules: profile, registry, analyzer, capabilities, workflows, services, connectors, context, discovery, intelligence, memory, summary, health, metrics, plus domain / business / workflow / feature / module / service / organization / integration intelligence.
+- **`views`** — TUI views: execution summary, repository, architecture, dependency, documentation, verification, reasoning, planning, workflow, connector.
+- **`integration`** — the boundary that makes orchestration usable by the agent: `ExecutionPackage` builder, agent context, agent hints, agent capabilities, agent-selection advice, prompt augmentation, agent enhancer, and agent adapter.
 
-### Contributing
+### Integration points
 
-If you're interested in contributing to OpenCode, please read our [contributing docs](./CONTRIBUTING.md) before submitting a pull request.
+The engine is designed to plug into the agent rather than replace it. Key integration surfaces (`packages/orchestrator/src/integration`):
 
-### Building on OpenCode
+- **`ExecutionPackage`** — the structured package describing what should run (capabilities, specialists, knowledge requirements).
+- **`AgentContext` / `AgentHints` / `AgentCapabilities`** — context, hints, and capability advice handed to agents.
+- **`PromptAugmentation`** — augments the prompt with the planned knowledge.
+- **`AgentAdapter`** — adapts orchestration output to the agent runtime.
 
-If you are working on a project that's related to OpenCode and is using "opencode" as part of its name, for example "opencode-dashboard" or "opencode-mobile", please add a note to your README to clarify that it is not built by the OpenCode team and is not affiliated with us in any way.
+## Agents
+
+OpenCode includes two built-in agents you can switch between with the `Tab` key:
+
+- **build** — Default, full-access agent for development work.
+- **plan** — Read-only agent for analysis and code exploration (denies edits, asks before bash).
+
+A **general** subagent handles complex searches and multi-step tasks (invoke with `@general`).
+
+Learn more in the [OpenCode agent docs](https://opencode.ai/docs/agents).
+
+## Documentation
+
+Core OpenCode documentation: [opencode.ai/docs](https://opencode.ai/docs).
+For contributing, read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request.
+
+## Status
+
+This repository carries the full OpenCode history (forked) with the Orchestration Engine developed on the `orchestration-engine` branch and merged into `main`. The engine is actively developed under `packages/orchestrator`.
 
 ---
 
-**Join our community** [Discord](https://discord.gg/opencode) | [X.com](https://x.com/opencode)
+**Community:** [Discord](https://discord.gg/opencode) · [X.com](https://x.com/opencode)
