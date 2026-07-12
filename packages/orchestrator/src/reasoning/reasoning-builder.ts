@@ -68,8 +68,8 @@ const build: Interface["build"] = Effect.fn("ReasoningBuilder.build")(function* 
   const reasoningSummary = `Consensus: ${consensus.overallConsensus} (${Math.round(consensus.overallConfidence * 100)}%). ${consensus.recommendations[0] ?? narrative.recommendedWorkflow ?? ""}`
   const reasoningConfidence = consensus.overallConfidence
 
-  return { narrative, consensus, decisions, reasoningSummary, reasoningConfidence, consensusTimeMs: consensusTime, narrativeTimeMs: narrTime, decisionTimeMs: decTime }
-})
+  return { narrative, consensus, decisions, reasoningSummary, reasoningConfidence, consensusTimeMs: consensusTime, narrativeTimeMs: narrTime, decisionTimeMs: decTime } as ReasoningReport
+}) as Interface["build"]
 
 const layer = Layer.effect(
   Service,

@@ -429,11 +429,29 @@ export const CapabilityAdvertised = Event.define({
   },
 })
 
+export const CollaborationStarted = Event.define({
+  type: "orchestrator.collaboration-started",
+  schema: {
+    sessionID: Schema.String,
+    policy: Schema.String,
+    participantCount: Schema.Finite,
+  },
+})
+
 export const CollaborationCompleted = Event.define({
   type: "orchestrator.collaboration-completed",
   schema: {
     sessionID: Schema.String,
     teamPlanCreated: Schema.Boolean,
+  },
+})
+
+export const PeerReviewStarted = Event.define({
+  type: "orchestrator.peer-review-started",
+  schema: {
+    sessionID: Schema.String,
+    reviewerID: Schema.String,
+    targetID: Schema.String,
   },
 })
 
@@ -769,6 +787,96 @@ export const ApplicationIntelligenceReported = Event.define({
   },
 })
 
+export const DomainAnalyzed = Event.define({
+  type: "orchestrator.domain-analyzed",
+  schema: {
+    sessionID: Schema.String,
+    domain: Schema.String,
+    termCount: Schema.Finite,
+  },
+})
+
+export const BusinessAnalyzed = Event.define({
+  type: "orchestrator.business-analyzed",
+  schema: {
+    sessionID: Schema.String,
+    departmentCount: Schema.Finite,
+    processCount: Schema.Finite,
+  },
+})
+
+export const WorkflowAnalyzed = Event.define({
+  type: "orchestrator.workflow-analyzed",
+  schema: {
+    sessionID: Schema.String,
+    workflowCount: Schema.Finite,
+    bottleneckCount: Schema.Finite,
+  },
+})
+
+export const FeatureCatalogBuilt = Event.define({
+  type: "orchestrator.feature-catalog-built",
+  schema: {
+    sessionID: Schema.String,
+    featureCount: Schema.Finite,
+    duplicateCount: Schema.Finite,
+  },
+})
+
+export const ModuleAnalyzed = Event.define({
+  type: "orchestrator.module-analyzed",
+  schema: {
+    sessionID: Schema.String,
+    moduleCount: Schema.Finite,
+    dependencyCount: Schema.Finite,
+  },
+})
+
+export const ServiceAnalyzed = Event.define({
+  type: "orchestrator.service-analyzed",
+  schema: {
+    sessionID: Schema.String,
+    serviceCount: Schema.Finite,
+    endpointCount: Schema.Finite,
+  },
+})
+
+export const IntegrationAnalyzed = Event.define({
+  type: "orchestrator.integration-analyzed",
+  schema: {
+    sessionID: Schema.String,
+    connectorCount: Schema.Finite,
+    apiCount: Schema.Finite,
+  },
+})
+
+export const OrganizationAnalyzed = Event.define({
+  type: "orchestrator.organization-analyzed",
+  schema: {
+    sessionID: Schema.String,
+    departmentCount: Schema.Finite,
+  },
+})
+
+export const ApplicationSummaryBuilt = Event.define({
+  type: "orchestrator.application-summary-built",
+  schema: {
+    sessionID: Schema.String,
+    moduleCount: Schema.Finite,
+    workflowCount: Schema.Finite,
+    serviceCount: Schema.Finite,
+    featureCount: Schema.Finite,
+  },
+})
+
+export const ApplicationKnowledgeReused = Event.define({
+  type: "orchestrator.application-knowledge-reused",
+  schema: {
+    sessionID: Schema.String,
+    reuseCount: Schema.Finite,
+  },
+})
+
 import {
   RuntimeStarted,
   RuntimeCompleted,
@@ -898,7 +1006,9 @@ export const Definitions = [
   TeamDiscussionBuilt,
   ReviewCompleted,
   CapabilityAdvertised,
+  CollaborationStarted,
   CollaborationCompleted,
+  PeerReviewStarted,
   ConnectorRegistered,
   ConnectorRequested,
   ConnectorPrepared,
@@ -981,4 +1091,14 @@ export const Definitions = [
   ApplicationAnalyzed,
   ApplicationDiscovered,
   ApplicationIntelligenceReported,
+  DomainAnalyzed,
+  BusinessAnalyzed,
+  WorkflowAnalyzed,
+  FeatureCatalogBuilt,
+  ModuleAnalyzed,
+  ServiceAnalyzed,
+  IntegrationAnalyzed,
+  OrganizationAnalyzed,
+  ApplicationSummaryBuilt,
+  ApplicationKnowledgeReused,
 ] as const

@@ -1,9 +1,10 @@
 export * as ModelCatalog from "./model-catalog"
 
-import { Array, Context, Effect, Layer, Order } from "effect"
-import { Catalog } from "@opencode-ai/core/catalog"
-import type { ModelV2 } from "@opencode-ai/core/model"
-import type { ProviderV2 } from "@opencode-ai/core/provider"
+import { Context, Effect, Layer } from "effect"
+import { Catalog } from "../catalog"
+
+type ModelInfo = Catalog.ModelData
+type ProviderInfo = Catalog.ProviderData
 import type { Capability } from "../types/capability"
 
 export interface ModelMetadata {
@@ -41,7 +42,7 @@ const DEFAULT_HINTS: CapabilityHintMap = {
   "search": { modelRegex: "search|retrieval", weight: 0.7 },
 }
 
-function inferCapabilities(model: ModelV2.Info, provider: ProviderV2.Info): Capability[] {
+function inferCapabilities(model: ModelInfo, provider: ProviderInfo): Capability[] {
   const caps: Capability[] = []
   const idName = `${model.id} ${model.family ?? ""} ${model.name ?? ""}`.toLowerCase()
 
@@ -61,7 +62,7 @@ function inferCapabilities(model: ModelV2.Info, provider: ProviderV2.Info): Capa
   return caps
 }
 
-function estimateLatency(model: ModelV2.Info): number {
+function estimateLatency(model: ModelInfo): number {
   const baseCost = model.cost[0] ? model.cost[0].input + model.cost[0].output : 0.01
   if (baseCost <= 0) return 500
   const idName = `${model.id} ${model.family ?? ""} ${model.name ?? ""}`.toLowerCase()
@@ -70,7 +71,7 @@ function estimateLatency(model: ModelV2.Info): number {
   return 1000 + baseCost * 500
 }
 
-function estimateQuality(model: ModelV2.Info): number {
+function estimateQuality(model: ModelInfo): number {
   const idName = `${model.id} ${model.family ?? ""} ${model.name ?? ""}`.toLowerCase()
   if (/opus|ultra|pro|max|reasoner|large/.test(idName)) return 0.95
   if (/sonnet|turbo|medium|flash/.test(idName)) return 0.85
@@ -78,7 +79,7 @@ function estimateQuality(model: ModelV2.Info): number {
   return 0.80
 }
 
-function estimateReliability(model: ModelV2.Info): number {
+function estimateReliability(model: ModelInfo): number {
   if (model.status === "active") return 0.95
   if (model.status === "beta") return 0.80
   if (model.status === "alpha") return 0.60
@@ -96,7 +97,7 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/orchestrator/ModelCatalog") {}
 
-function enrichModel(model: ModelV2.Info, provider: ProviderV2.Info): ModelMetadata {
+function enrichModel(model: ModelInfo, provider: ProviderInfo): ModelMetadata {
   const capabilities = inferCapabilities(model, provider)
   const cost = model.cost[0]
   return {
@@ -142,9 +143,9 @@ const layer = Layer.effect(
 
     const result: Interface = {
       getModel: Effect.fn("ModelCatalog.getModel")(function* (providerID, modelID) {
-        const model = yield* catalog.model.get(providerID as any, modelID as any)
+        const model = yield* catalog.model.get(providerID, modelID)
         if (!model) return
-        const provider = yield* catalog.provider.get(providerID as any)
+        const provider = yield* catalog.provider.get(providerID)
         if (!provider) return
         return enrichModel(model, provider)
       }),
@@ -169,10 +170,10 @@ const layer = Layer.effect(
       }),
 
       refresh: Effect.fn("ModelCatalog.refresh")(function* () {
-        const models = yield* fetchAllModels
+        const models = yield* fetchAllModels()
         snap = { models, timestamp: Date.now() }
-        return snap
-      }),
+        return snap as CatalogSnapshot
+      }) as () => Effect.Effect<CatalogSnapshot, never, never>,
 
       snapshot: Effect.fn("ModelCatalog.snapshot")(function* () {
         return snap

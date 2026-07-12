@@ -157,7 +157,7 @@ const layer = Layer.effect(
         integrationPoints: analysis.integrationPoints.map((ip) => ip.name),
       }
     }),
-  }),
+  }) as unknown as Effect.Effect<Interface, never, never>,
 )
 
 export { layer }

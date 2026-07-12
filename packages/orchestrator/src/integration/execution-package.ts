@@ -357,6 +357,7 @@ import type { PromptAugmentation } from "./prompt-augmentation"
 import type { AgentContextProfile } from "./agent-context"
 import type { ApplicationProfile } from "../application/application-profile"
 import type { ApplicationSummary, WorkflowCatalog, CapabilityCatalog, ServiceCatalog, ModuleCatalog, IntelligenceReport } from "../application/application-intelligence"
+import type { CollaborationResult } from "./collaboration-result"
 
 export interface ExecutionPackage {
   readonly sessionID: string
@@ -428,6 +429,8 @@ export interface ExecutionPackage {
   readonly serviceCatalog: ServiceCatalog | undefined
   readonly moduleCatalog: ModuleCatalog | undefined
   readonly intelligenceReport: IntelligenceReport | undefined
+
+  readonly collaboration: CollaborationResult | undefined
 }
 
 export function empty(sessionID: string): ExecutionPackage {
@@ -515,5 +518,6 @@ export function empty(sessionID: string): ExecutionPackage {
     serviceCatalog: undefined,
     moduleCatalog: undefined,
     intelligenceReport: undefined,
+    collaboration: undefined,
   }
 }

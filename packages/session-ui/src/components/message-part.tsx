@@ -193,7 +193,7 @@ export interface MessagePartProps {
 
 function MessageActionButton(
   props: Pick<ComponentProps<"button">, "disabled" | "onMouseDown" | "onClick" | "aria-label"> & {
-    icon: "check" | "copy" | "reset"
+    icon: "check" | "copy" | "reset" | "download"
     label: JSX.Element
     useV2?: boolean
   },
@@ -1662,6 +1662,7 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
     return isLastTextPart()
   })
   const [copied, setCopied] = createSignal(false)
+  const [exported, setExported] = createSignal(false)
 
   const handleCopy = async () => {
     const content = text()
@@ -1670,6 +1671,20 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
+  }
+
+  const handleExport = () => {
+    const content = text()
+    if (!content) return
+    const blob = new Blob([content], { type: "text/plain" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `response-${part().id.slice(0, 8)}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+    setExported(true)
+    setTimeout(() => setExported(false), 2000)
   }
 
   return (
@@ -1689,6 +1704,14 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
               onMouseDown={(event) => event.preventDefault()}
               onClick={handleCopy}
               aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyResponse")}
+            />
+            <MessageActionButton
+              icon={exported() ? "check" : "download"}
+              label={exported() ? i18n.t("ui.message.exported") ?? "Exported" : i18n.t("ui.message.exportResponse") ?? "Export"}
+              useV2={props.useV2Actions}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={handleExport}
+              aria-label={exported() ? "Exported" : "Export response"}
             />
             <Show when={meta()}>
               <span data-slot="text-part-meta" class="text-12-regular text-text-weak cursor-default">

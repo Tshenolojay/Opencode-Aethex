@@ -41,7 +41,7 @@ function determineNeededSources(pkg: ExecutionPackage): { required: KnowledgeSou
   if (classification.requiresDependencyGraph) required.push("dependency")
   if (classification.requiresVerification) required.push("verification")
   if (classification.requiresSearch) optional.push("tool-history")
-  if (classification.type === "refactor" || classification.type === "code-generation") optional.push("architecture")
+  if (classification.type === "refactoring" || classification.type === "code-generation") optional.push("architecture")
 
   return { required, optional }
 }

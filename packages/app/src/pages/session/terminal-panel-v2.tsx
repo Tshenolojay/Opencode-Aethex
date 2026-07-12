@@ -1,4 +1,4 @@
-import { For, Show, createEffect, createMemo, on, onCleanup, onMount } from "solid-js"
+import { For, Show, createEffect, createMemo, createSignal, on, onCleanup, onMount } from "solid-js"
 import { createStore } from "solid-js/store"
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { createMediaQuery } from "@solid-primitives/media"
@@ -226,7 +226,7 @@ export function TerminalPanelV2(props: { stacked?: boolean } = {}) {
       <div
         class="absolute inset-0 flex flex-col overflow-hidden"
         classList={{
-          "border-t border-border-weak-base": opened() && !isDesktop(),
+          "border-t border-border-weaker-base": opened() && !isDesktop(),
           "border-t border-border-weaker-base": opened() && stacked() && !newLayout(),
           "border-l border-border-weaker-base": opened() && isDesktop() && !newLayout(),
           "pointer-events-none": !opened(),
@@ -331,9 +331,35 @@ export function TerminalPanelV2(props: { stacked?: boolean } = {}) {
                         />
                       </TooltipV2>
                     </Show>
+                    <Show when={opened() && terminal.active()}>
+                      <div class="w-px h-4 mx-0.5 bg-border-weaker-base" />
+                      <TooltipV2 value="Clear terminal output" placement="bottom" class="flex items-center">
+                        <IconButton
+                          icon="reset"
+                          variant="ghost"
+                          iconSize="large"
+                          onClick={() => {
+                            try {
+                              terminal.bind().trim(terminal.active()!)
+                            } catch { /* terminal not ready */ }
+                          }}
+                          aria-label="Clear terminal"
+                        />
+                      </TooltipV2>
+                    </Show>
                   </div>
                 </Tabs.List>
               </Tabs>
+              <div
+                classList={{
+                  "transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[max-height,opacity] motion-reduce:transition-none overflow-hidden":
+                    true,
+                  "max-h-0 opacity-0": !(newLayout() && opened() && terminal.ready()),
+                  "max-h-[60px] opacity-100": newLayout() && opened() && terminal.ready(),
+                }}
+              >
+                <PinnedCommands />
+              </div>
               <div class="flex-1 min-h-0 relative">
                 <Show when={opened() && terminal.active()} keyed>
                   {(id) => {
@@ -362,5 +388,103 @@ export function TerminalPanelV2(props: { stacked?: boolean } = {}) {
         </Show>
       </div>
     </aside>
+  )
+}
+
+const PINS_KEY = "opencode-terminal-pins"
+
+function loadPins(): string[] {
+  try {
+    const raw = localStorage.getItem(PINS_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function savePins(pins: string[]): void {
+  try {
+    localStorage.setItem(PINS_KEY, JSON.stringify(pins))
+  } catch {
+    /* noop */
+  }
+}
+
+function PinnedCommands() {
+  const [pins, setPins] = createSignal<string[]>(loadPins())
+  const [newPin, setNewPin] = createSignal("")
+  const [adding, setAdding] = createSignal(false)
+
+  const addPin = () => {
+    const cmd = newPin().trim()
+    if (!cmd) return
+    const updated = [cmd, ...pins().filter((p) => p !== cmd)].slice(0, 10)
+    setPins(updated)
+    savePins(updated)
+    setNewPin("")
+    setAdding(false)
+  }
+
+  const removePin = (cmd: string) => {
+    const updated = pins().filter((p) => p !== cmd)
+    setPins(updated)
+    savePins(updated)
+  }
+
+  const runPin = (cmd: string) => {
+    navigator.clipboard.writeText(cmd).catch(() => {})
+  }
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Enter") addPin()
+    if (e.key === "Escape") { setAdding(false); setNewPin("") }
+  }
+
+  return (
+    <Show when={pins().length > 0 || adding()}>
+      <div class="flex items-center gap-0.5 px-2 py-0.5 border-b border-border-weaker-base min-h-[22px] overflow-x-auto">
+        <For each={pins()}>
+          {(cmd) => (
+            <div class="flex items-center gap-0.5 group shrink-0">
+              <button
+                type="button"
+                class="flex items-center gap-1 px-1.5 py-0.5 rounded text-11-regular text-text-faint bg-v2-surface-muted hover:bg-v2-surface-hover hover:text-text-base transition-colors whitespace-nowrap max-w-[140px]"
+                onClick={() => runPin(cmd)}
+                title={`Copy: ${cmd}`}
+              >
+                <span class="truncate">{cmd}</span>
+              </button>
+              <button
+                type="button"
+                class="size-3.5 flex items-center justify-center rounded text-text-faint hover:text-text-weak hover:bg-v2-surface-hover opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                onClick={() => removePin(cmd)}
+                aria-label={`Remove ${cmd}`}
+              >
+                ×
+              </button>
+            </div>
+          )}
+        </For>
+        <Show when={adding()}>
+          <input
+            type="text"
+            value={newPin()}
+            onInput={(e) => setNewPin(e.currentTarget.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Command..."
+            class="w-24 h-4 text-11-regular bg-v2-surface-muted rounded px-1 border-none outline-none text-text-base placeholder:text-text-faint"
+            autofocus
+          />
+        </Show>
+        <button
+          type="button"
+          class="size-3.5 flex items-center justify-center rounded text-text-faint hover:text-text-weak hover:bg-v2-surface-hover shrink-0"
+          onClick={() => { setAdding(!adding()); if (adding()) setNewPin("") }}
+          aria-label="Pin a command"
+        >
+          +
+        </button>
+      </div>
+    </Show>
   )
 }

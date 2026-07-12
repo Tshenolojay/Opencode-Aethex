@@ -67,7 +67,7 @@ const estimate: Interface["estimate"] = Effect.fn("ConfidenceEngine.estimate")(f
 
   const score = factors.reduce((acc, f) => acc * f, 1.0) / Math.pow(factors.length, factors.length)
 
-  return Schema.decodeSync(Schema.Literals("high", "medium", "low"))(scoreToLevel(score))
+  return Schema.decodeSync(Schema.Literals(["high", "medium", "low"] as const))(scoreToLevel(score)) as ConfidenceLevel
 })
 
 const estimateWithScore: Interface["estimateWithScore"] = Effect.fn("ConfidenceEngine.estimateWithScore")(function* (input) {

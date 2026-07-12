@@ -203,9 +203,10 @@ const layer = Layer.effect(
       yield* Ref.update(store, (s) => {
         const request = s.knowledgePlan?.requests.find((r) => r.id === requestID)
         if (!request) return s
+        const req = { ...request, status: "completed" as const }
         return {
           ...s,
-          completedRequests: [...s.completedRequests, { ...request, status: "completed" }],
+          completedRequests: [...s.completedRequests, req as KnowledgeRequest],
         }
       })
     })
@@ -214,9 +215,10 @@ const layer = Layer.effect(
       yield* Ref.update(store, (s) => {
         const request = s.knowledgePlan?.requests.find((r) => r.id === requestID)
         if (!request) return s
+        const req = { ...request, status: "failed" as const }
         return {
           ...s,
-          failedRequests: [...s.failedRequests, { ...request, status: "failed" }],
+          failedRequests: [...s.failedRequests, req as KnowledgeRequest],
         }
       })
     })

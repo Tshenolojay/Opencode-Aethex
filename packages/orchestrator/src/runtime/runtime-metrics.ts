@@ -93,6 +93,21 @@ export interface ExtendedMetrics {
   readonly applicationAnalysisCount: number
   readonly applicationDiscoveryCount: number
   readonly applicationReportCount: number
+  readonly domainAnalysisCount: number
+  readonly businessAnalysisCount: number
+  readonly workflowAnalysisCount: number
+  readonly featureAnalysisCount: number
+  readonly moduleAnalysisCount: number
+  readonly serviceAnalysisCount: number
+  readonly integrationAnalysisCount: number
+  readonly organizationAnalysisCount: number
+  readonly summaryGenerationCount: number
+  readonly memoryReuseCount: number
+  readonly collaborationRoundCount: number
+  readonly collaborationConflictCount: number
+  readonly collaborationReviewCount: number
+  readonly collaborationKnowledgeExchangeCount: number
+  readonly collaborationEfficiency: number
 }
 
 export interface Interface {
@@ -177,6 +192,21 @@ export interface Interface {
   readonly recordApplicationAnalysis: () => Effect.Effect<void>
   readonly recordApplicationDiscovery: () => Effect.Effect<void>
   readonly recordApplicationReport: () => Effect.Effect<void>
+  readonly recordDomainAnalysis: () => Effect.Effect<void>
+  readonly recordBusinessAnalysis: () => Effect.Effect<void>
+  readonly recordWorkflowAnalysis: () => Effect.Effect<void>
+  readonly recordFeatureAnalysis: () => Effect.Effect<void>
+  readonly recordModuleAnalysis: () => Effect.Effect<void>
+  readonly recordServiceAnalysis: () => Effect.Effect<void>
+  readonly recordIntegrationAnalysis: () => Effect.Effect<void>
+  readonly recordOrganizationAnalysis: () => Effect.Effect<void>
+  readonly recordSummaryGeneration: () => Effect.Effect<void>
+  readonly recordMemoryReuse: () => Effect.Effect<void>
+  readonly recordCollaborationRound: () => Effect.Effect<void>
+  readonly recordCollaborationConflict: () => Effect.Effect<void>
+  readonly recordCollaborationReview: () => Effect.Effect<void>
+  readonly recordCollaborationKnowledgeExchange: () => Effect.Effect<void>
+  readonly recordCollaborationEfficiency: (rate: number) => Effect.Effect<void>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/orchestrator/RuntimeMetrics") {}
@@ -275,6 +305,21 @@ function zeroExtended(): ExtendedMetrics {
     applicationAnalysisCount: 0,
     applicationDiscoveryCount: 0,
     applicationReportCount: 0,
+    domainAnalysisCount: 0,
+    businessAnalysisCount: 0,
+    workflowAnalysisCount: 0,
+    featureAnalysisCount: 0,
+    moduleAnalysisCount: 0,
+    serviceAnalysisCount: 0,
+    integrationAnalysisCount: 0,
+    organizationAnalysisCount: 0,
+    summaryGenerationCount: 0,
+    memoryReuseCount: 0,
+    collaborationRoundCount: 0,
+    collaborationConflictCount: 0,
+    collaborationReviewCount: 0,
+    collaborationKnowledgeExchangeCount: 0,
+    collaborationEfficiency: 0,
   }
 }
 
@@ -643,6 +688,66 @@ const layer = Layer.effect(
       yield* Ref.update(extended, (m) => ({ ...m, applicationReportCount: m.applicationReportCount + 1 }))
     })
 
+    const recordCollaborationRound = Effect.fn("RuntimeMetrics.recordCollaborationRound")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, collaborationRoundCount: m.collaborationRoundCount + 1 }))
+    })
+
+    const recordCollaborationConflict = Effect.fn("RuntimeMetrics.recordCollaborationConflict")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, collaborationConflictCount: m.collaborationConflictCount + 1 }))
+    })
+
+    const recordCollaborationReview = Effect.fn("RuntimeMetrics.recordCollaborationReview")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, collaborationReviewCount: m.collaborationReviewCount + 1 }))
+    })
+
+    const recordCollaborationKnowledgeExchange = Effect.fn("RuntimeMetrics.recordCollaborationKnowledgeExchange")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, collaborationKnowledgeExchangeCount: m.collaborationKnowledgeExchangeCount + 1 }))
+    })
+
+    const recordCollaborationEfficiency = Effect.fn("RuntimeMetrics.recordCollaborationEfficiency")(function* (rate: number) {
+      yield* Ref.update(extended, (m) => ({ ...m, collaborationEfficiency: rate }))
+    })
+
+    const recordDomainAnalysis = Effect.fn("RuntimeMetrics.recordDomainAnalysis")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, domainAnalysisCount: m.domainAnalysisCount + 1 }))
+    })
+
+    const recordBusinessAnalysis = Effect.fn("RuntimeMetrics.recordBusinessAnalysis")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, businessAnalysisCount: m.businessAnalysisCount + 1 }))
+    })
+
+    const recordWorkflowAnalysis = Effect.fn("RuntimeMetrics.recordWorkflowAnalysis")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, workflowAnalysisCount: m.workflowAnalysisCount + 1 }))
+    })
+
+    const recordFeatureAnalysis = Effect.fn("RuntimeMetrics.recordFeatureAnalysis")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, featureAnalysisCount: m.featureAnalysisCount + 1 }))
+    })
+
+    const recordModuleAnalysis = Effect.fn("RuntimeMetrics.recordModuleAnalysis")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, moduleAnalysisCount: m.moduleAnalysisCount + 1 }))
+    })
+
+    const recordServiceAnalysis = Effect.fn("RuntimeMetrics.recordServiceAnalysis")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, serviceAnalysisCount: m.serviceAnalysisCount + 1 }))
+    })
+
+    const recordIntegrationAnalysis = Effect.fn("RuntimeMetrics.recordIntegrationAnalysis")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, integrationAnalysisCount: m.integrationAnalysisCount + 1 }))
+    })
+
+    const recordOrganizationAnalysis = Effect.fn("RuntimeMetrics.recordOrganizationAnalysis")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, organizationAnalysisCount: m.organizationAnalysisCount + 1 }))
+    })
+
+    const recordSummaryGeneration = Effect.fn("RuntimeMetrics.recordSummaryGeneration")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, summaryGenerationCount: m.summaryGenerationCount + 1 }))
+    })
+
+    const recordMemoryReuse = Effect.fn("RuntimeMetrics.recordMemoryReuse")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, memoryReuseCount: m.memoryReuseCount + 1 }))
+    })
+
     const getExtended = Ref.get(extended)
 
     return Service.of({
@@ -672,6 +777,12 @@ const layer = Layer.effect(
       recordReusedSummary, recordReusedConnectorPlan, recordReusedWorkflow,
       recordSkippedPreparation, recordContextCompressionRatio, recordExecutionPackageSize,
       recordApplicationAnalysis, recordApplicationDiscovery, recordApplicationReport,
+      recordDomainAnalysis, recordBusinessAnalysis, recordWorkflowAnalysis,
+      recordFeatureAnalysis, recordModuleAnalysis, recordServiceAnalysis,
+      recordIntegrationAnalysis, recordOrganizationAnalysis,
+      recordSummaryGeneration, recordMemoryReuse,
+      recordCollaborationRound, recordCollaborationConflict, recordCollaborationReview,
+      recordCollaborationKnowledgeExchange, recordCollaborationEfficiency,
       getExtended,
     })
   }),

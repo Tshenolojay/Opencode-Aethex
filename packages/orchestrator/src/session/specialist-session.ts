@@ -142,9 +142,14 @@ const layer = Layer.effect(
           const s = map.get(sessionID)
           if (s) {
             const now = Date.now()
-            s.status = status
-            if (status === "executing" && !s.lifecycle.startedAt) s.lifecycle.startedAt = now
-            if (status === "completed" || status === "failed") s.lifecycle.completedAt = now
+            let updated: SpecialistSessionData = { ...s, status }
+            if (status === "executing" && !s.lifecycle.startedAt) {
+              updated = { ...updated, lifecycle: { ...updated.lifecycle, startedAt: now } }
+            }
+            if (status === "completed" || status === "failed") {
+              updated = { ...updated, lifecycle: { ...updated.lifecycle, completedAt: now } }
+            }
+            map.set(sessionID, updated)
           }
           return map
         })
@@ -154,10 +159,13 @@ const layer = Layer.effect(
         yield* Ref.update(sessions, (map) => {
           const s = map.get(sessionID)
           if (s) {
-            s.assignedModel = model
-            s.fallbackModel = fallback
-            s.status = "assigned"
-            s.lifecycle.assignedAt = Date.now()
+            map.set(sessionID, {
+              ...s,
+              assignedModel: model,
+              fallbackModel: fallback,
+              status: "assigned",
+              lifecycle: { ...s.lifecycle, assignedAt: Date.now() },
+            })
           }
           return map
         })
@@ -166,7 +174,7 @@ const layer = Layer.effect(
       addMessage: Effect.fn("SpecialistSession.addMessage")(function* (sessionID, message) {
         yield* Ref.update(sessions, (map) => {
           const s = map.get(sessionID)
-          if (s) s.conversationHistory = [...s.conversationHistory, message]
+          if (s) map.set(sessionID, { ...s, conversationHistory: [...s.conversationHistory, message] })
           return map
         })
       }),
@@ -175,8 +183,12 @@ const layer = Layer.effect(
         yield* Ref.update(sessions, (map) => {
           const s = map.get(sessionID)
           if (s) {
-            s.knowledgeProduced = [...s.knowledgeProduced, claim]
-            s.metrics.knowledgeProduced = s.knowledgeProduced.length
+            const knowledgeProduced = [...s.knowledgeProduced, claim]
+            map.set(sessionID, {
+              ...s,
+              knowledgeProduced,
+              metrics: { ...s.metrics, knowledgeProduced: knowledgeProduced.length },
+            })
           }
           return map
         })
@@ -186,8 +198,12 @@ const layer = Layer.effect(
         yield* Ref.update(sessions, (map) => {
           const s = map.get(sessionID)
           if (s) {
-            s.knowledgeConsumed = [...s.knowledgeConsumed, knowledgeID]
-            s.metrics.knowledgeConsumed = s.knowledgeConsumed.length
+            const knowledgeConsumed = [...s.knowledgeConsumed, knowledgeID]
+            map.set(sessionID, {
+              ...s,
+              knowledgeConsumed,
+              metrics: { ...s.metrics, knowledgeConsumed: knowledgeConsumed.length },
+            })
           }
           return map
         })
@@ -196,7 +212,7 @@ const layer = Layer.effect(
       updateMetrics: Effect.fn("SpecialistSession.updateMetrics")(function* (sessionID, update) {
         yield* Ref.update(sessions, (map) => {
           const s = map.get(sessionID)
-          if (s) s.metrics = { ...s.metrics, ...update }
+          if (s) map.set(sessionID, { ...s, metrics: { ...s.metrics, ...update } })
           return map
         })
       }),

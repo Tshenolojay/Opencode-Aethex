@@ -15,6 +15,7 @@ import { runIntegrationStage } from "./integration-stage"
 import { runReasoningStage } from "./reasoning-stage"
 import { runConnectorStage } from "./connector-stage"
 import { runTeamStage } from "./team-stage"
+import { runCollaborationStage } from "./collaboration-stage"
 import { runFinalizationStage, type PipelineOutput } from "./finalization-stage"
 import { KnowledgeBundle } from "../knowledge/knowledge"
 import { AgentDispatcher } from "../dispatcher/dispatcher"
@@ -79,7 +80,7 @@ export function createInitialState(input: OrchestrationInput): PipelineState {
     executionGraph: undefined,
 
     runtimeOutput: undefined,
-    knowledgeBundle: KnowledgeBundle.empty("general-chat" as any),
+    knowledgeBundle: KnowledgeBundle.empty("general-chat"),
 
     repoAnalysis: undefined,
     depAnalysis: undefined,
@@ -101,7 +102,7 @@ export function createInitialState(input: OrchestrationInput): PipelineState {
       dispatchPlan: undefined,
       planningPolicy: undefined,
       executionGraph: undefined,
-      knowledgeBundle: KnowledgeBundle.empty("general-chat" as any),
+      knowledgeBundle: KnowledgeBundle.empty("general-chat"),
       repositoryIntelligence: undefined,
       dependencyIntelligence: undefined,
       architectureIntelligence: undefined,
@@ -138,6 +139,14 @@ export function createInitialState(input: OrchestrationInput): PipelineState {
       connectorResults: undefined,
       connectorMetadata: undefined,
       reusableKnowledgeSources: undefined,
+      applicationProfile: undefined,
+      applicationSummary: undefined,
+      workflowCatalog: undefined,
+      capabilityCatalog: undefined,
+      serviceCatalog: undefined,
+      moduleCatalog: undefined,
+      intelligenceReport: undefined,
+      collaboration: undefined,
     },
 
     virtualTeam: undefined,
@@ -153,14 +162,15 @@ export function createInitialState(input: OrchestrationInput): PipelineState {
 export type StageFn = (state: PipelineState) => Effect.Effect<PipelineState>
 
 const stages: StageFn[] = [
-  runFoundationStage,
-  runPlanningStage,
-  runExecutionStage,
-  runIntelligenceStage,
-  runIntegrationStage,
-  runReasoningStage,
-  runConnectorStage,
-  runTeamStage,
+  runFoundationStage as StageFn,
+  runPlanningStage as StageFn,
+  runExecutionStage as StageFn,
+  runIntelligenceStage as StageFn,
+  runIntegrationStage as StageFn,
+  runReasoningStage as StageFn,
+  runConnectorStage as StageFn,
+  runTeamStage as StageFn,
+  runCollaborationStage as StageFn,
 ]
 
 export function runAllStages(input: OrchestrationInput): Effect.Effect<PipelineOutput> {
@@ -168,13 +178,14 @@ export function runAllStages(input: OrchestrationInput): Effect.Effect<PipelineO
     let state = createInitialState(input)
 
     for (const stage of stages) {
+      const tStage = Date.now()
       state = yield* stage(state).pipe(
-        Effect.catchAll((error) =>
+        Effect.catchIf(() => true, (error: unknown) =>
           Effect.succeed({
             ...state,
             diagnostics: [
               ...state.diagnostics,
-              { phase: stage.name || "unknown", durationMs: 0, result: "failed", error: String(error) },
+              { phase: stage.name || "unknown", durationMs: Date.now() - tStage, result: "failed", error: String(error) },
             ],
           } as PipelineState)
         ),
@@ -187,7 +198,7 @@ export function runAllStages(input: OrchestrationInput): Effect.Effect<PipelineO
     }
 
     return yield* runFinalizationStage(state)
-  })
+  }) as unknown as Effect.Effect<PipelineOutput, never, never>
 }
 
 function buildHighConfidenceOutput(state: PipelineState): Effect.Effect<PipelineOutput> {

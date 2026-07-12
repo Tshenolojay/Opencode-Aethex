@@ -185,8 +185,8 @@ const estimateCapabilities: Interface["estimateCapabilities"] = Effect.fn("Model
     default: reason = "General task with minimal capability requirements" ; break
   }
 
-  return { requirements, recommendedCount: requirements.filter((r) => !r.optional).length, reason }
-})
+  return { requirements, recommendedCount: requirements.filter((r) => !r.optional).length, reason } as CapabilityProfile
+}) as unknown as Interface["estimateCapabilities"]
 
 const select: Interface["select"] = Effect.fn("ModelSelector.select")(function* (input) {
   const { requiredCapabilities, availableModels } = input
@@ -258,12 +258,12 @@ const evaluate: Interface["evaluate"] = Effect.fn("ModelSelector.evaluate")(func
   return { selection, candidates: scoredCandidates }
 })
 
-const selectWithFallback: Interface["selectWithFallback"] = Effect.fn("ModelSelector.selectWithFallback")(function* (input, policyName) {
+const selectWithFallback: Interface["selectWithFallback"] = Effect.fn("ModelSelector.selectWithFallback")(function* (input: Input, policyName: string | undefined) {
   const modelRanking = yield* ModelRanking.Service
   const policies = yield* SelectionPolicies.Service
 
-  const policy = policyName ? policies.getPolicy(policyName) ?? SelectionPolicies.DEFAULT_POLICY : SelectionPolicies.DEFAULT_POLICY
-  const requirements: CapabilityRequirement[] = input.requiredCapabilities.map((c) => ({
+  const policy = (policyName ? policies.getPolicy(policyName) ?? SelectionPolicies.DEFAULT_POLICY : SelectionPolicies.DEFAULT_POLICY) as SelectionPolicy
+  const requirements: CapabilityRequirement[] = input.requiredCapabilities.map((c: Capability) => ({
     capability: c, weight: 1, optional: false,
   }))
 
@@ -289,10 +289,10 @@ const selectWithFallback: Interface["selectWithFallback"] = Effect.fn("ModelSele
     equivalents: result.equivalents.map(toSelection).filter((s): s is ModelSelection => s !== undefined),
     policy: policy.name,
     strategy: policy.modelStrategy,
-  }
-})
+  } as RichSelection
+}) as unknown as Interface["selectWithFallback"]
 
-const selectWeighted: Interface["selectWeighted"] = Effect.fn("ModelSelector.selectWeighted")(function* (input, options = {}) {
+const selectWeighted: Interface["selectWeighted"] = Effect.fn("ModelSelector.selectWeighted")(function* (input: Input, options: { readonly healthWeight?: number; readonly costWeight?: number; readonly latencyWeight?: number; readonly capabilityWeight?: number } = {}) {
   const {
     healthWeight = 0.2,
     costWeight = 0.15,
@@ -304,11 +304,11 @@ const selectWeighted: Interface["selectWeighted"] = Effect.fn("ModelSelector.sel
   const costEstimator = yield* CostEstimator.Service
   const latencyEstimator = yield* LatencyEstimator.Service
 
-  const requirements: CapabilityRequirement[] = input.requiredCapabilities.map((c) => ({
+  const requirements: CapabilityRequirement[] = input.requiredCapabilities.map((c: Capability) => ({
     capability: c, weight: 1, optional: false,
   }))
 
-  const scored = yield* Effect.all(input.availableModels.map((m) =>
+  const scored: Array<AvailableModel & { totalScore: number; capScore: number; healthScore: number; costScore: number; latencyScore: number; matched: Capability[]; missing: Capability[] }> = yield* Effect.all(input.availableModels.map((m: AvailableModel) =>
     Effect.gen(function* () {
       const { matched, missing, score: capScore } = scoreModel(m, requirements)
       const health = yield* modelHealth.getHealth(m.providerID, m.modelID)
@@ -332,8 +332,8 @@ const selectWeighted: Interface["selectWeighted"] = Effect.fn("ModelSelector.sel
     capabilities: best.capabilities,
     reason: `weighted selection (cap=${(best.capScore * capabilityWeight).toFixed(2)}, health=${(best.healthScore * healthWeight).toFixed(2)}, cost=${(best.costScore * costWeight).toFixed(2)}, latency=${(best.latencyScore * latencyWeight).toFixed(2)})`,
     matchScore: best.totalScore,
-  }
-})
+  } as ModelSelection
+}) as unknown as Interface["selectWeighted"]
 
 const layer = Layer.effect(
   Service,

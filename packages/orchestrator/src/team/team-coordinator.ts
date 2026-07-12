@@ -43,13 +43,13 @@ const coordinate: Interface["coordinate"] = Effect.fn("TeamCoordinator.coordinat
     consensusPrepared,
     reviewStages,
     connectorRequests,
-  }
+  } as TeamPlan
 })
 
 const facilitateDiscussion: Interface["facilitateDiscussion"] = Effect.fn("TeamCoordinator.facilitateDiscussion")(function* (teamID, topic, participants) {
   const conversation = yield* SpecialistConversation.Service
   yield* conversation.startThread(participants)
-})
+}) as Interface["facilitateDiscussion"]
 
 const collectVotes: Interface["collectVotes"] = Effect.fn("TeamCoordinator.collectVotes")(function* (teamID, participants) {
   const result: Record<string, number> = {}

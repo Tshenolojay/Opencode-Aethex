@@ -32,6 +32,8 @@ export interface Settings {
     shellToolPartsExpanded: boolean
     editToolPartsExpanded: boolean
     showCustomAgents: boolean
+    showLeftSidebar: boolean
+    showRightSidebar: boolean
     mobileTitlebarPosition: "top" | "bottom"
     newLayoutDesigns?: boolean
   }
@@ -117,6 +119,8 @@ const defaultSettings: Settings = {
     shellToolPartsExpanded: false,
     editToolPartsExpanded: false,
     showCustomAgents: false,
+    showLeftSidebar: true,
+    showRightSidebar: true,
     mobileTitlebarPosition: "top",
   },
   appearance: {
@@ -159,6 +163,14 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
     const showCustomAgents = withFallback(
       () => store.general?.showCustomAgents,
       defaultSettings.general.showCustomAgents,
+    )
+    const showLeftSidebar = withFallback(
+      () => store.general?.showLeftSidebar,
+      defaultSettings.general.showLeftSidebar,
+    )
+    const showRightSidebar = withFallback(
+      () => store.general?.showRightSidebar,
+      defaultSettings.general.showRightSidebar,
     )
     const newLayoutDesigns = withFallback(() => store.general?.newLayoutDesigns, newLayoutDesignsDefault)
     const visible = (preference: () => boolean) => createMemo(() => !newLayoutDesigns() || preference())
@@ -241,6 +253,14 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         setShowCustomAgents(value: boolean) {
           setStore("general", "showCustomAgents", value)
         },
+        showLeftSidebar,
+        setShowLeftSidebar(value: boolean) {
+          setStore("general", "showLeftSidebar", value)
+        },
+        showRightSidebar,
+        setShowRightSidebar(value: boolean) {
+          setStore("general", "showRightSidebar", value)
+        },
         mobileTitlebarPosition: withFallback(
           () => store.general?.mobileTitlebarPosition,
           defaultSettings.general.mobileTitlebarPosition,
@@ -258,6 +278,8 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         search: visible(showSearch),
         status: visible(showStatus),
         customAgents: visible(showCustomAgents),
+        leftSidebar: showLeftSidebar,
+        rightSidebar: showRightSidebar,
       },
       appearance: {
         fontSize: withFallback(() => store.appearance?.fontSize, defaultSettings.appearance.fontSize),

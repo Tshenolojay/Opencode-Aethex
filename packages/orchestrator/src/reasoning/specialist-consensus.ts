@@ -166,10 +166,26 @@ function resolveConflict(conflict: ConflictRecord, resolution: string, resolvedB
   return { ...conflict, resolved: true, resolution, resolvedBy }
 }
 
+const analyzeWithVotes: Interface["analyzeWithVotes"] = Effect.fn("SpecialistConsensus.analyzeWithVotes")(function* (pkg, votes) {
+  const base = yield* analyze(pkg)
+  return {
+    overallConsensus: base.overallConsensus,
+    overallConfidence: base.overallConfidence,
+    agreements: base.agreements,
+    disagreements: base.disagreements,
+    weightedVotes: votes,
+    conflicts: [],
+    minorityOpinions: [],
+    missingEvidence: base.missingEvidence,
+    recommendations: base.recommendations,
+    finalRecommendation: base.recommendations.length > 0 ? base.recommendations[0] : undefined,
+  }
+})
+
 const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
-    return Service.of({ analyze, analyzeWithVotes: analyze as any, resolveConflict, computeWeightedConsensus })
+    return Service.of({ analyze, analyzeWithVotes, resolveConflict, computeWeightedConsensus })
   }),
 )
 

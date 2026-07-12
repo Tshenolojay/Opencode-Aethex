@@ -3,6 +3,7 @@ export * as VirtualTeam from "./virtual-team"
 import { Context, Effect, Layer } from "effect"
 import type { ExecutionPackage } from "../integration/execution-package"
 import type { VirtualTeam as TeamState, TeamMember } from "../integration/execution-package"
+import type { Capability } from "../types/capability"
 import { SpecialistRegistry } from "../specialists/registry"
 import { SpecialistConversation } from "../session/specialist-conversation"
 import type { MessageType } from "../session/specialist-session"
@@ -50,7 +51,7 @@ const build: Interface["build"] = Effect.fn("VirtualTeam.build")(function* (pkg)
 
   const members: TeamMember[] = allSpecialists.map((s) => {
     const p = s.profile
-    const relevant = p.requiredCapabilities.filter((c) => requiredCaps.has(c)).length
+    const relevant = p.requiredCapabilities.filter((c) => requiredCaps.has(c as Capability)).length
     const taskRelevant =
       (classification.requiresSearch && p.requiredCapabilities.includes("search")) ||
       (classification.requiresDependencyGraph && p.requiredCapabilities.includes("analysis"))
@@ -114,23 +115,23 @@ const build: Interface["build"] = Effect.fn("VirtualTeam.build")(function* (pkg)
     confidenceDistribution: Object.fromEntries(confidenceEntries),
     escalationChain: undefined,
     consensusStatus: narrative?.specialistConsensus ? "reached" : "pending",
-  }
-})
+  } as TeamState
+}) as Interface["build"]
 
 const delegateTask: Interface["delegateTask"] = Effect.fn("VirtualTeam.delegateTask")(function* (teamID, delegation) {
   const conversation = yield* SpecialistConversation.Service
   yield* conversation.startThread([delegation.from, delegation.to])
-})
+}) as Interface["delegateTask"]
 
 const requestPeerReview: Interface["requestPeerReview"] = Effect.fn("VirtualTeam.requestPeerReview")(function* (teamID, review) {
   const conversation = yield* SpecialistConversation.Service
   yield* conversation.startThread([review.from, review.to])
-})
+}) as Interface["requestPeerReview"]
 
 const escalate: Interface["escalate"] = Effect.fn("VirtualTeam.escalate")(function* (teamID, escalation) {
   const conversation = yield* SpecialistConversation.Service
   yield* conversation.startThread([escalation.from, escalation.to])
-})
+}) as Interface["escalate"]
 
 const resolveEscalation: Interface["resolveEscalation"] = Effect.fn("VirtualTeam.resolveEscalation")(function* (teamID, escalation, resolution) {
   const conversation = yield* SpecialistConversation.Service
@@ -139,7 +140,7 @@ const resolveEscalation: Interface["resolveEscalation"] = Effect.fn("VirtualTeam
   if (thread) {
     yield* conversation.resolveThread(thread.threadID, resolution)
   }
-})
+}) as Interface["resolveEscalation"]
 
 const layer = Layer.effect(
   Service,

@@ -254,11 +254,11 @@ const matchSpecialists: Interface["matchSpecialists"] = Effect.fn("CapabilityPla
   return results.sort((a, b) => b.totalScore - a.totalScore)
 })
 
-const selectSpecialists: Interface["selectSpecialists"] = Effect.fn("CapabilityPlanner.selectSpecialists")(function* (taskType: TaskType) {
+const selectSpecialists = Effect.fn("CapabilityPlanner.selectSpecialists")(function* (taskType: TaskType) {
   const registry = yield* SpecialistRegistry.Service
   const all = yield* registry.getAllSpecialists()
   return all.filter((s) => s.canHandle(taskType))
-})
+}) as unknown as Interface["selectSpecialists"]
 
 const layer = Layer.effect(
   Service,

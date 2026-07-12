@@ -6,6 +6,7 @@ import { RuntimeMetrics } from "./runtime-metrics"
 import { RuntimeResult, fromSpecialistResult } from "./runtime-result"
 import { RuntimeContext } from "./runtime-context"
 import type { RuntimeContextData } from "./runtime-context"
+import type { SpecialistProfile } from "../specialists/profiles"
 import { SpecialistRunner } from "../execution/specialist-runner"
 import type { RunnerOutput } from "../execution/specialist-runner"
 import type { SpecialistResult } from "../execution/specialist-result"
@@ -59,7 +60,7 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/orchestrator/RuntimeManager") {}
 
-const run: Interface["run"] = Effect.fn("RuntimeManager.run")(function* (input) {
+const run = Effect.fn("RuntimeManager.run")(function* (input: RuntimeManagerInput) {
   const startTime = Date.now()
   const cache = yield* RuntimeCache.Service
   const metrics = yield* RuntimeMetrics.Service
@@ -106,7 +107,7 @@ const run: Interface["run"] = Effect.fn("RuntimeManager.run")(function* (input) 
         preferredKnowledge: [],
         executionPriority: 1,
         supportsParallelExecution: false,
-      },
+      } as unknown as SpecialistProfile,
       taskObjective: input.taskObjective,
       knowledgeBundle: input.knowledgeBundle,
     })
@@ -167,7 +168,7 @@ const run: Interface["run"] = Effect.fn("RuntimeManager.run")(function* (input) 
     },
     executionPackage: undefined,
   }
-})
+}) as unknown as Interface["run"]
 
 const layer = Layer.effect(
   Service,

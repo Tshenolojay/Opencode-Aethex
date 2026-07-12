@@ -92,7 +92,7 @@ const run: Interface["run"] = Effect.fn("SpecialistRunner.run")(function* (input
   const partial = failed.length > 0 && completed.length > 0
 
   return { results, completed, failed, partial }
-})
+}) as unknown as Interface["run"]
 
 function findSpecialist(graph: Graph, nodeID: string, registry: { getSpecialist: (id: string) => Effect.Effect<import("../specialists/base-specialist").BaseSpecialistInterface | undefined> }): import("../specialists/profiles").SpecialistProfile {
   const node = graph.nodes.find((n) => n.id === nodeID)

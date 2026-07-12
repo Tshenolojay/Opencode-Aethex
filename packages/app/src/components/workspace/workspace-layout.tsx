@@ -1,12 +1,16 @@
-import { createMemo, createSignal, ParentProps, Show } from "solid-js"
+import { createMemo, createSignal, ParentProps, Show, onCleanup } from "solid-js"
 import { createMediaQuery } from "@solid-primitives/media"
 import { ResizeHandle } from "@opencode-ai/ui/resize-handle"
 import { Icon } from "@opencode-ai/ui/v2/icon"
 import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
 import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import { useSettings } from "@/context/settings"
+import { useCommand } from "@/context/command"
+import { usePrompt } from "@/context/prompt"
+import { showToast } from "@/utils/toast"
 import { RepoExplorer } from "./repo-explorer"
 import { AIWorkspace } from "./ai-workspace"
+import { WorkspaceStatusBar } from "./workspace-status-bar"
 
 const DEFAULT_LEFT_WIDTH = 260
 const DEFAULT_RIGHT_WIDTH = 280
@@ -16,15 +20,41 @@ const RIGHT_MIN = 220
 const RIGHT_MAX = 400
 const COLLAPSE_THRESHOLD = 50
 
+const WORKSPACE_LAYOUT_KEY = "workspace-layout-v1"
+
+type WorkspaceLayoutState = {
+  leftWidth: number
+  rightWidth: number
+}
+
+function loadLayoutState(): WorkspaceLayoutState {
+  try {
+    const raw = localStorage.getItem(WORKSPACE_LAYOUT_KEY)
+    if (raw) return JSON.parse(raw) as WorkspaceLayoutState
+  } catch { /* ignore */ }
+  return { leftWidth: DEFAULT_LEFT_WIDTH, rightWidth: DEFAULT_RIGHT_WIDTH }
+}
+
+function saveLayoutState(state: WorkspaceLayoutState) {
+  try {
+    localStorage.setItem(WORKSPACE_LAYOUT_KEY, JSON.stringify(state))
+  } catch { /* ignore */ }
+}
+
 export function WorkspaceLayout(props: ParentProps) {
   const settings = useSettings()
+  const command = useCommand()
+  const prompt = usePrompt()
   const isDesktop = createMediaQuery("(min-width: 1024px)")
   const isTablet = createMediaQuery("(min-width: 768px) and (max-width: 1023px)")
 
-  const [leftWidth, setLeftWidth] = createSignal(DEFAULT_LEFT_WIDTH)
-  const [rightWidth, setRightWidth] = createSignal(DEFAULT_RIGHT_WIDTH)
+  const saved = loadLayoutState()
+  const [leftWidth, setLeftWidth] = createSignal(saved.leftWidth)
+  const [rightWidth, setRightWidth] = createSignal(saved.rightWidth)
   const [mobileLeft, setMobileLeft] = createSignal(false)
   const [mobileRight, setMobileRight] = createSignal(false)
+
+  onCleanup(() => saveLayoutState({ leftWidth: leftWidth(), rightWidth: rightWidth() }))
 
   const leftOpen = createMemo(() => {
     if (!isDesktop() && !isTablet()) return mobileLeft()
@@ -51,160 +81,248 @@ export function WorkspaceLayout(props: ParentProps) {
     }
   }
 
+  command.register("workspace-layout", () => [
+    {
+      id: "workspace.toggleExplorer",
+      title: "Toggle Explorer",
+      category: "Workspace",
+      keybind: "mod+shift+e",
+      onSelect: toggleLeft,
+    },
+    {
+      id: "workspace.toggleAIWorkspace",
+      title: "Toggle AI Workspace",
+      category: "Workspace",
+      keybind: "mod+shift+i",
+      onSelect: toggleRight,
+    },
+    {
+      id: "workspace.searchRepository",
+      title: "Search Repository",
+      category: "Workspace",
+      keybind: "mod+shift+f",
+      onSelect: () => showToast({ title: "Search", message: "Focus the repository search", variant: "info" }),
+    },
+    {
+      id: "workspace.explainArchitecture",
+      title: "Explain Architecture",
+      category: "Workspace",
+      onSelect: () => {
+        const current = prompt.current()
+        const textPart = current.find((p) => p.type === "text")
+        if (textPart) {
+          prompt.set([{ ...textPart, content: "Explain the architecture of this workspace" }])
+        } else {
+          prompt.set([{ type: "text", content: "Explain the architecture of this workspace", start: 0, end: 0 }])
+        }
+        showToast({ title: "Command", message: "Explain Architecture", variant: "info" })
+      },
+    },
+    {
+      id: "workspace.traceDependency",
+      title: "Trace Dependency",
+      category: "Workspace",
+      onSelect: () => {
+        const current = prompt.current()
+        const textPart = current.find((p) => p.type === "text")
+        if (textPart) {
+          prompt.set([{ ...textPart, content: "Trace the main dependencies in this project" }])
+        } else {
+          prompt.set([{ type: "text", content: "Trace the main dependencies in this project", start: 0, end: 0 }])
+        }
+        showToast({ title: "Command", message: "Trace Dependency", variant: "info" })
+      },
+    },
+    {
+      id: "workspace.reviewRepository",
+      title: "Review Repository",
+      category: "Workspace",
+      onSelect: () => {
+        const current = prompt.current()
+        const textPart = current.find((p) => p.type === "text")
+        if (textPart) {
+          prompt.set([{ ...textPart, content: "Review the codebase for potential issues and improvements" }])
+        } else {
+          prompt.set([{ type: "text", content: "Review the codebase for potential issues and improvements", start: 0, end: 0 }])
+        }
+        showToast({ title: "Command", message: "Review Repository", variant: "info" })
+      },
+    },
+    {
+      id: "workspace.generateDocs",
+      title: "Generate Documentation",
+      category: "Workspace",
+      onSelect: () => {
+        const current = prompt.current()
+        const textPart = current.find((p) => p.type === "text")
+        if (textPart) {
+          prompt.set([{ ...textPart, content: "Generate documentation for the main features of this workspace" }])
+        } else {
+          prompt.set([{ type: "text", content: "Generate documentation for the main features of this workspace", start: 0, end: 0 }])
+        }
+        showToast({ title: "Command", message: "Generate Documentation", variant: "info" })
+      },
+    },
+  ])
+
   return (
-    <div class="flex-1 min-h-0 flex flex-row relative">
-      {/* Mobile overlay */}
-      <Show when={(mobileLeft() || mobileRight()) && !isDesktop()}>
-        <div
-          class="absolute inset-0 z-20 bg-black/30"
-          onClick={() => { setMobileLeft(false); setMobileRight(false) }}
-        />
-      </Show>
+    <div class="flex-1 min-h-0 flex flex-col relative">
+      <div class="flex-1 min-h-0 flex flex-row relative">
+        {/* Mobile overlay */}
+        <Show when={(mobileLeft() || mobileRight()) && !isDesktop()}>
+          <div
+            class="absolute inset-0 z-20 bg-black/30 motion-reduce:bg-black/40"
+            onClick={() => { setMobileLeft(false); setMobileRight(false) }}
+            aria-label="Close sidebar"
+          />
+        </Show>
 
-      {/* Left Toggle Button (when collapsed) */}
-      <Show when={!leftOpen() && (isDesktop() || isTablet())}>
-        <div class="absolute left-0 top-0 bottom-0 z-10 flex items-center">
-          <TooltipV2 placement="right" value="Explorer">
-            <IconButtonV2
-              type="button"
-              variant="ghost-muted"
-              size="small"
-              class="size-6 rounded-r-none rounded-l hover:bg-v2-surface-hover border border-border-weaker-base border-l-0 bg-v2-background-bg-base"
-              icon={<Icon name="filetree" size="sm" />}
-              onClick={toggleLeft}
-              aria-label="Open Explorer"
-            />
-          </TooltipV2>
-        </div>
-      </Show>
-
-      {/* Left Sidebar */}
-      <Show when={leftOpen()}>
-        <div
-          class="h-full shrink-0 flex flex-col overflow-hidden border-r border-border-weaker-base z-30 transition-all duration-200"
-          classList={{
-            "absolute left-0 top-0 bottom-0 shadow-xl": !isDesktop(),
-            "w-64": !isDesktop(),
-          }}
-          style={{ width: isDesktop() ? `${leftWidth()}px` : undefined }}
-        >
-          <Show when={!isDesktop()}>
-            <div class="shrink-0 flex items-center justify-end px-2 py-1 border-b border-border-weaker-base">
+        {/* Left Toggle Button (when collapsed) */}
+        <Show when={!leftOpen() && (isDesktop() || isTablet())}>
+          <div class="absolute left-0 top-0 bottom-0 z-10 flex items-center">
+            <TooltipV2 placement="right" value="Explorer">
               <IconButtonV2
                 type="button"
                 variant="ghost-muted"
                 size="small"
-                class="size-6"
-                icon={<Icon name="close" size="sm" />}
+                class="size-6 rounded-r-none rounded-l hover:bg-v2-surface-hover border border-border-weaker-base border-l-0 bg-v2-background-bg-base"
+                icon={<Icon name="filetree" size="sm" />}
                 onClick={toggleLeft}
-                aria-label="Close Explorer"
+                aria-label="Open Explorer"
               />
-            </div>
+            </TooltipV2>
+          </div>
+        </Show>
+
+        {/* Left Sidebar */}
+        <Show when={leftOpen()}>
+          <div
+            class="h-full shrink-0 flex flex-col overflow-hidden border-r border-border-weaker-base z-30 transition-all duration-200 motion-reduce:transition-none"
+            classList={{
+              "absolute left-0 top-0 bottom-0 shadow-xl": !isDesktop(),
+              "w-64": !isDesktop(),
+            }}
+            style={{ width: isDesktop() ? `${leftWidth()}px` : undefined }}
+          >
+            <Show when={!isDesktop()}>
+              <div class="shrink-0 flex items-center justify-end px-2 py-1 border-b border-border-weaker-base">
+                <IconButtonV2
+                  type="button"
+                  variant="ghost-muted"
+                  size="small"
+                  class="size-6"
+                  icon={<Icon name="close" size="sm" />}
+                  onClick={toggleLeft}
+                  aria-label="Close Explorer"
+                />
+              </div>
+            </Show>
+            <RepoExplorer />
+          </div>
+          <Show when={isDesktop()}>
+            <ResizeHandle
+              direction="horizontal"
+              edge="end"
+              size={leftWidth()}
+              min={LEFT_MIN}
+              max={LEFT_MAX}
+              collapseThreshold={COLLAPSE_THRESHOLD}
+              onResize={(width) => { setLeftWidth(width); saveLayoutState({ leftWidth: width, rightWidth: rightWidth() }) }}
+              onCollapse={() => settings.setShowLeftSidebar(false)}
+            />
           </Show>
-          <RepoExplorer />
+        </Show>
+
+        {/* Center: Main Content */}
+        <div class="flex-1 min-h-0 min-w-0 flex flex-col">
+          {props.children}
         </div>
-        <Show when={isDesktop()}>
-          <ResizeHandle
-            direction="horizontal"
-            edge="end"
-            size={leftWidth()}
-            min={LEFT_MIN}
-            max={LEFT_MAX}
-            collapseThreshold={COLLAPSE_THRESHOLD}
-            onResize={(width) => setLeftWidth(width)}
-            onCollapse={() => settings.setShowLeftSidebar(false)}
-          />
-        </Show>
-      </Show>
 
-      {/* Center: Main Content */}
-      <div class="flex-1 min-h-0 min-w-0 flex flex-col">
-        {props.children}
-      </div>
-
-      {/* Right Sidebar */}
-      <Show when={rightOpen()}>
-        <Show when={isDesktop()}>
-          <ResizeHandle
-            direction="horizontal"
-            edge="start"
-            size={rightWidth()}
-            min={RIGHT_MIN}
-            max={RIGHT_MAX}
-            collapseThreshold={COLLAPSE_THRESHOLD}
-            onResize={(width) => setRightWidth(width)}
-            onCollapse={() => settings.setShowRightSidebar(false)}
-          />
+        {/* Right Sidebar */}
+        <Show when={rightOpen()}>
+          <Show when={isDesktop()}>
+            <ResizeHandle
+              direction="horizontal"
+              edge="start"
+              size={rightWidth()}
+              min={RIGHT_MIN}
+              max={RIGHT_MAX}
+              collapseThreshold={COLLAPSE_THRESHOLD}
+              onResize={(width) => { setRightWidth(width); saveLayoutState({ leftWidth: leftWidth(), rightWidth: width }) }}
+              onCollapse={() => settings.setShowRightSidebar(false)}
+            />
+          </Show>
+          <div
+            class="h-full shrink-0 flex flex-col overflow-hidden border-l border-border-weaker-base z-30 transition-all duration-200 motion-reduce:transition-none"
+            classList={{
+              "absolute right-0 top-0 bottom-0 shadow-xl": !isDesktop(),
+              "w-72": !isDesktop(),
+            }}
+            style={{ width: isDesktop() ? `${rightWidth()}px` : undefined }}
+          >
+            <Show when={!isDesktop()}>
+              <div class="shrink-0 flex items-center justify-end px-2 py-1 border-b border-border-weaker-base">
+                <IconButtonV2
+                  type="button"
+                  variant="ghost-muted"
+                  size="small"
+                  class="size-6"
+                  icon={<Icon name="close" size="sm" />}
+                  onClick={toggleRight}
+                  aria-label="Close AI Workspace"
+                />
+              </div>
+            </Show>
+            <AIWorkspace />
+          </div>
         </Show>
-        <div
-          class="h-full shrink-0 flex flex-col overflow-hidden border-l border-border-weaker-base z-30 transition-all duration-200"
-          classList={{
-            "absolute right-0 top-0 bottom-0 shadow-xl": !isDesktop(),
-            "w-72": !isDesktop(),
-          }}
-          style={{ width: isDesktop() ? `${rightWidth()}px` : undefined }}
-        >
-          <Show when={!isDesktop()}>
-            <div class="shrink-0 flex items-center justify-end px-2 py-1 border-b border-border-weaker-base">
+
+        {/* Right Toggle Button (when collapsed) */}
+        <Show when={!rightOpen() && isDesktop()}>
+          <div class="absolute right-0 top-0 bottom-0 z-10 flex items-center">
+            <TooltipV2 placement="left" value="AI Workspace">
               <IconButtonV2
                 type="button"
                 variant="ghost-muted"
                 size="small"
-                class="size-6"
-                icon={<Icon name="close" size="sm" />}
+                class="size-6 rounded-l-none rounded-r hover:bg-v2-surface-hover border border-border-weaker-base border-r-0 bg-v2-background-bg-base"
+                icon={<Icon name="sidebar-right" size="sm" />}
                 onClick={toggleRight}
-                aria-label="Close AI Workspace"
+                aria-label="Open AI Workspace"
               />
-            </div>
-          </Show>
-          <AIWorkspace />
-        </div>
-      </Show>
+            </TooltipV2>
+          </div>
+        </Show>
 
-      {/* Right Toggle Button (when collapsed) */}
-      <Show when={!rightOpen() && isDesktop()}>
-        <div class="absolute right-0 top-0 bottom-0 z-10 flex items-center">
-          <TooltipV2 placement="left" value="AI Workspace">
-            <IconButtonV2
-              type="button"
-              variant="ghost-muted"
-              size="small"
-              class="size-6 rounded-l-none rounded-r hover:bg-v2-surface-hover border border-border-weaker-base border-r-0 bg-v2-background-bg-base"
-              icon={<Icon name="sidebar-right" size="sm" />}
-              onClick={toggleRight}
-              aria-label="Open AI Workspace"
-            />
-          </TooltipV2>
-        </div>
-      </Show>
-
-      {/* Mobile toggle buttons */}
-      <Show when={!isDesktop() && !isTablet()}>
-        <div class="absolute bottom-4 right-4 z-10 flex flex-col gap-2">
-          <TooltipV2 placement="left" value="Explorer">
-            <IconButtonV2
-              type="button"
-              variant="secondary"
-              size="small"
-              class="size-8 shadow-md"
-              icon={<Icon name="filetree" size="sm" />}
-              onClick={toggleLeft}
-              aria-label="Toggle Explorer"
-            />
-          </TooltipV2>
-          <TooltipV2 placement="left" value="AI Workspace">
-            <IconButtonV2
-              type="button"
-              variant="secondary"
-              size="small"
-              class="size-8 shadow-md"
-              icon={<Icon name="sidebar-right" size="sm" />}
-              onClick={toggleRight}
-              aria-label="Toggle AI Workspace"
-            />
-          </TooltipV2>
-        </div>
-      </Show>
+        {/* Mobile toggle buttons */}
+        <Show when={!isDesktop() && !isTablet()}>
+          <div class="absolute bottom-4 right-4 z-10 flex flex-col gap-2">
+            <TooltipV2 placement="left" value="Explorer">
+              <IconButtonV2
+                type="button"
+                variant="secondary"
+                size="small"
+                class="size-8 shadow-md"
+                icon={<Icon name="filetree" size="sm" />}
+                onClick={toggleLeft}
+                aria-label="Toggle Explorer"
+              />
+            </TooltipV2>
+            <TooltipV2 placement="left" value="AI Workspace">
+              <IconButtonV2
+                type="button"
+                variant="secondary"
+                size="small"
+                class="size-8 shadow-md"
+                icon={<Icon name="sidebar-right" size="sm" />}
+                onClick={toggleRight}
+                aria-label="Toggle AI Workspace"
+              />
+            </TooltipV2>
+          </div>
+        </Show>
+      </div>
+      <WorkspaceStatusBar />
     </div>
   )
 }

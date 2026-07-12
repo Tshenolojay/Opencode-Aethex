@@ -1,6 +1,7 @@
 import { Effect } from "effect"
 import type { PipelineState } from "./pipeline"
 import type { OrchestrationDecision } from "../contracts/service"
+import type { Capability } from "../types/capability"
 import { AgentDispatcher } from "../dispatcher/dispatcher"
 import { KnowledgeBundle } from "../knowledge/knowledge"
 import type { TimingInfo } from "../types/metadata"
@@ -56,7 +57,7 @@ export const runFinalizationStage = Effect.fn("Pipeline.finalization")(function*
     skipReason: state.dispatchPlan?.requiredAgents.length === 0
       ? "no specialist agents required"
       : undefined,
-    selectedCapabilities: state.requiredCapabilities,
+    selectedCapabilities: state.requiredCapabilities as readonly Capability[] | undefined,
     knowledgeRequirements: knowledgeTypes.length > 0 ? knowledgeTypes : undefined,
     executionNotes: runnerFailed > 0
       ? [`${runnerFailed} specialist(s) failed during execution`]
@@ -72,6 +73,7 @@ export const runFinalizationStage = Effect.fn("Pipeline.finalization")(function*
 
   const learningEngine = yield* LearningEngine.Service
 
+  const tLearn = Date.now()
   yield* learningEngine.observeDecision({
     sessionID: state.input.sessionID,
     timestamp: Date.now(),
@@ -100,13 +102,14 @@ export const runFinalizationStage = Effect.fn("Pipeline.finalization")(function*
 
   const learningMetrics = yield* LearningMetrics.Service
   const metrics = yield* learningMetrics.getMetrics()
+  const learnMs = Date.now() - tLearn
 
   return {
     decision,
     timing,
     diagnostics: [
       ...diagnostics,
-      { phase: "learning-cycle", durationMs: 0, result: `cycle=${metrics.learningCycleCount} optimized=${metrics.optimizedDecisions}`, error: undefined },
+      { phase: "learning-cycle", durationMs: learnMs, result: `cycle=${metrics.learningCycleCount} optimized=${metrics.optimizedDecisions}`, error: undefined },
     ],
     executionGraph: undefined,
     executionPackage: state.executionPackage,

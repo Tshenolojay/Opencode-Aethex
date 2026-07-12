@@ -52,7 +52,7 @@ const generate: Interface["generate"] = Effect.fn("AgentHints.generate")(functio
 
   if ((pkg.knowledgeBundle.contextSummary?.length ?? 0) > 1000) hints.push("long-context")
 
-  if (pkg.taskClassification.type === "refactor" || pkg.taskClassification.type === "architecture") {
+  if (pkg.taskClassification.type === "refactoring" || pkg.taskClassification.type === "architecture-design") {
     hints.push("large-refactor")
   }
 

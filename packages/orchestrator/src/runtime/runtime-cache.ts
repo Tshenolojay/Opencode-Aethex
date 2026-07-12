@@ -9,6 +9,8 @@ export type CacheKey =
   | "documentation-analysis"
   | "search-results"
   | "verification-results"
+  | `runtime:cache:${string}`
+  | `specialist:${string}:${string}`
 
 export interface CacheEntry {
   readonly key: CacheKey

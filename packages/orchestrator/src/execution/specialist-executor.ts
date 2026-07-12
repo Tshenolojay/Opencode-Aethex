@@ -67,7 +67,7 @@ const execute: Interface["execute"] = Effect.fn("SpecialistExecutor.execute")(fu
     metadata: { executionPhase: "specialist-execution" },
   }
   return result
-})
+}) as unknown as Interface["execute"]
 
 const layer = Layer.effect(
   Service,

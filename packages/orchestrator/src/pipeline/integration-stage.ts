@@ -90,17 +90,13 @@ export const runIntegrationStage = Effect.fn("Pipeline.integration")(function* (
       ? [`${runtimeOutput.failed.length} specialist(s) failed`]
       : undefined,
   })
-  const executionPackage = ep as unknown as Record<string, unknown>
   yield* runtimeMetrics.recordPackageBuildTime(Date.now() - tBuild)
 
   const agentProfile = yield* agentContext.prepare(ep)
-  executionPackage.agentContextProfile = agentProfile
 
   const hints = yield* agentHintsService.generate(ep, agentProfile.agentType)
-  executionPackage.agentHints = hints
 
   const selectionAdvice = yield* agentSelectionService.advise(ep)
-  executionPackage.agentSelectionAdvice = selectionAdvice
 
   const executionSummaryData = yield* executionSummaryView.project(ep)
   const repositoryData = yield* repositoryView.project(ep)
@@ -129,7 +125,6 @@ export const runIntegrationStage = Effect.fn("Pipeline.integration")(function* (
 
   const tAug = Date.now()
   const promptAug = yield* promptAugmentationService.build(ep)
-  executionPackage.promptAugmentation = promptAug
   yield* runtimeMetrics.recordPromptAugmentationTime(Date.now() - tAug)
 
   yield* agentEnhancer.enhance(ep, agentProfile)
@@ -137,14 +132,12 @@ export const runIntegrationStage = Effect.fn("Pipeline.integration")(function* (
 
   const tIntel = Date.now()
   const executionIntelligence = yield* executionAdvisor.advise(ep)
-  executionPackage.executionIntelligence = executionIntelligence
   const intelTime = Date.now() - tIntel
   yield* runtimeMetrics.recordAdvisorTime(intelTime)
   yield* runtimeMetrics.recordExecutionIntelligenceTime(intelTime)
 
   const tCompress = Date.now()
   const compression = yield* contextCompressor.compress(ep)
-  executionPackage.compressedContext = compression.compressedContext
   yield* runtimeMetrics.recordCompressionTime(Date.now() - tCompress)
   if (compression.savedBytes > 0) {
     yield* runtimeMetrics.recordReuseSavings(compression.savedBytes)
@@ -165,12 +158,22 @@ export const runIntegrationStage = Effect.fn("Pipeline.integration")(function* (
     yield* memory.cacheSummary(type, value)
   }
 
+  const tStage = Date.now()
+
   return {
     ...state,
-    executionPackage: executionPackage as unknown as ExecutionPackage,
+    executionPackage: {
+      ...ep,
+      agentContextProfile: agentProfile,
+      agentHints: hints,
+      agentSelectionAdvice: selectionAdvice,
+      promptAugmentation: promptAug,
+      executionIntelligence,
+      compressedContext: compression.compressedContext,
+    },
     diagnostics: [
       ...state.diagnostics,
-      { phase: "integration-layer", durationMs: 0, result: `package-built agent=${agentProfile.agentType} hints=${hints.hints.length}`, error: undefined },
+      { phase: "integration-layer", durationMs: Date.now() - tStage, result: `package-built agent=${agentProfile.agentType} hints=${hints.hints.length}`, error: undefined },
     ],
   } as PipelineState
 })

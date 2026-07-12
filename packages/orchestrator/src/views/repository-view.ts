@@ -25,7 +25,7 @@ const project: Interface["project"] = Effect.fn("RepositoryView.project")(functi
     relevantFiles: pkg.knowledgeBundle.relevantFiles.slice(0, 20),
     relevantModules: ri?.importantModules?.slice(0, 10) ?? [],
     changeImpact: ri?.changeImpact,
-  }
+  } as RepositoryViewData
 })
 
 const layer = Layer.effect(

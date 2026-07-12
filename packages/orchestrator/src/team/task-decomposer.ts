@@ -25,7 +25,7 @@ const decompose: Interface["decompose"] = Effect.fn("TaskDecomposer.decompose")(
   if (classification.requiresVerification) add("Verification", "verification", 4, ["task-1"], ["analysis", "tool-use"])
   if (classification.requiresSearch || pkg.knowledgeBundle.relevantFiles.length > 0) add("Documentation", "documentation", 2, ["task-1"], ["search", "long-context"])
   add("Planning", "planning", classification.complexity, [], ["planning", "reasoning"])
-  if (classification.type === "refactor" || classification.type === "code-generation") {
+  if (classification.type === "refactoring" || classification.type === "code-generation") {
     add("Refactoring", "refactoring", classification.complexity + 2, ["task-2", "task-3"].filter((d) => units.some((u) => u.id === d)), ["code-generation", "analysis"])
   }
 

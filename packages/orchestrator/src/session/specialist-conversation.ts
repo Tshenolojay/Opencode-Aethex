@@ -59,10 +59,13 @@ const layer = Layer.effect(
         yield* Ref.update(threads, (map) => {
           const thread = map.get(threadID)
           if (thread) {
-            thread.messages = [...thread.messages, {
-              id: nextMsgID(), from, to, type, content,
-              timestamp: Date.now(), confidence,
-            }]
+            map.set(threadID, {
+              ...thread,
+              messages: [...thread.messages, {
+                id: nextMsgID(), from, to, type, content,
+                timestamp: Date.now(), confidence,
+              }],
+            })
           }
           return map
         })
@@ -83,8 +86,7 @@ const layer = Layer.effect(
         yield* Ref.update(threads, (map) => {
           const thread = map.get(threadID)
           if (thread) {
-            thread.resolved = true
-            thread.resolution = resolution
+            map.set(threadID, { ...thread, resolved: true, resolution })
           }
           return map
         })

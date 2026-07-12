@@ -28,9 +28,7 @@ const layer = Layer.effect(
       yield* Ref.update(providers, (p) => [...p.filter((x) => x.type !== provider.type), provider])
     })
 
-    const getAll = Effect.fn("KnowledgeSourceRegistry.getAll")(function* () {
-      return yield* Ref.get(providers)
-    })
+    const getAll = Effect.map(Ref.get(providers), (p) => p as readonly KnowledgeProvider[])
 
     const getByType: Interface["getByType"] = Effect.fn("KnowledgeSourceRegistry.getByType")(function* (type) {
       const all = yield* Ref.get(providers)

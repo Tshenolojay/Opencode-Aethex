@@ -15,9 +15,9 @@ export const runReasoningStage = Effect.fn("Pipeline.reasoning")(function* (stat
 
   yield* reasoningMemory.initialize(state.input.sessionID)
 
-  const tReasoning = Date.now()
+  const tReasonTotal = Date.now()
   const reasoningReport = yield* reasoningBuilder.build(state.executionPackage)
-  const reasoningBuildTime = Date.now() - tReasoning
+  const reasoningBuildTime = Date.now() - tReasonTotal
 
   const reasoningState = yield* reasoningMemory.get
   const reusedReasoning = reasoningState.reuseCount > 0
@@ -38,29 +38,30 @@ export const runReasoningStage = Effect.fn("Pipeline.reasoning")(function* (stat
     yield* memory.recordReuseSavings(reasoningCompression.savedBytes)
   }
 
-  const mutPkg = state.executionPackage as unknown as Record<string, unknown>
-  mutPkg.executionNarrative = reasoningReport.narrative
-  mutPkg.specialistConsensus = reasoningReport.consensus
-  mutPkg.reasoningSummary = reasoningReport.reasoningSummary
-  mutPkg.reasoningConfidence = reasoningReport.reasoningConfidence
-  mutPkg.reasoningHistory = reasoningState.previousReasoning.slice(-5)
-  mutPkg.decisionSummary = reasoningReport.decisions
-  mutPkg.reasoningMetadata = {
-    reasoningBuildTimeMs: reasoningBuildTime,
-    consensusGenerationTimeMs: reasoningReport.consensusTimeMs,
-    narrativeGenerationTimeMs: reasoningReport.narrativeTimeMs,
-    decisionEngineTimeMs: reasoningReport.decisionTimeMs,
-    reusedReasoning,
-    compressedReasoning,
-  }
-
   yield* memory.cacheExecutionPackage(state.executionPackage)
 
   return {
     ...state,
+    executionPackage: {
+      ...state.executionPackage,
+      executionNarrative: reasoningReport.narrative,
+      specialistConsensus: reasoningReport.consensus,
+      reasoningSummary: reasoningReport.reasoningSummary,
+      reasoningConfidence: reasoningReport.reasoningConfidence,
+      reasoningHistory: reasoningState.previousReasoning.slice(-5),
+      decisionSummary: reasoningReport.decisions,
+      reasoningMetadata: {
+        reasoningBuildTimeMs: reasoningBuildTime,
+        consensusGenerationTimeMs: reasoningReport.consensusTimeMs,
+        narrativeGenerationTimeMs: reasoningReport.narrativeTimeMs,
+        decisionEngineTimeMs: reasoningReport.decisionTimeMs,
+        reusedReasoning,
+        compressedReasoning,
+      },
+    },
     diagnostics: [
       ...state.diagnostics,
-      { phase: "reasoning-layer", durationMs: 0, result: `reused=${reusedReasoning} compressed=${compressedReasoning}`, error: undefined },
+      { phase: "reasoning-layer", durationMs: Date.now() - tReasonTotal, result: `reused=${reusedReasoning} compressed=${compressedReasoning}`, error: undefined },
     ],
   } as PipelineState
 })

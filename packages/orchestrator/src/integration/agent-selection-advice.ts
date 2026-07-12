@@ -44,8 +44,8 @@ const advise: Interface["advise"] = Effect.fn("AgentSelectionAdvice.advise")(fun
     selectionReason,
     capabilityMatch: mappings.map((m) => ({ agent: m.agentType, score: m.coverageScore })),
     complexity,
-  }
-})
+  } as AgentSelectionAdvice
+}) as Interface["advise"]
 
 function extractCapabilities(pkg: ExecutionPackage): Capability[] {
   const caps: Capability[] = []

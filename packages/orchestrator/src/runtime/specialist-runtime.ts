@@ -50,7 +50,7 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/orchestrator/SpecialistRuntime") {}
 
-const execute: Interface["execute"] = Effect.fn("SpecialistRuntime.execute")(function* (input) {
+const execute = Effect.fn("SpecialistRuntime.execute")(function* (input: RuntimeInput) {
   const cache = yield* RuntimeCache.Service
   const validator = yield* RuntimeValidator.Service
   const fallback = yield* RuntimeFallback.Service
@@ -104,43 +104,41 @@ const execute: Interface["execute"] = Effect.fn("SpecialistRuntime.execute")(fun
       break
     }
 
-    const result = yield* executor.execute({
+    const result = yield* Effect.exit(executor.execute({
       specialist: input.specialist,
       taskObjective: prompt.userPrompt,
       taskType: input.taskType,
       knowledgeBundle: input.knowledgeBundle,
       knowledgePlan: input.knowledgePlan,
       capabilityPlan: input.capabilityPlan,
-    }).pipe(
-      Effect.either,
-    )
+    }))
 
-    if (result._tag === "Right") {
-      lastResult = result.right
-      cloudExecuted = result.right.metadata["cloud-executed"] === "true"
+    if (result._tag === "Success") {
+      lastResult = result.value
+      cloudExecuted = result.value.metadata["cloud-executed"] === "true"
 
       const validation = yield* validator.validate(
-        fromSpecialistResult(result.right, { attempt, cacheHit: false }),
+        fromSpecialistResult(result.value, { attempt, cacheHit: false }),
         input.specialist.preferredKnowledge,
       )
 
       if (validation.valid) {
-        yield* cache.put(cacheKey, JSON.stringify(result.right))
-        const runtimeResult = fromSpecialistResult(result.right, { attempt, cacheHit: false })
+        yield* cache.put(cacheKey, JSON.stringify(result.value))
+        const runtimeResult = fromSpecialistResult(result.value, { attempt, cacheHit: false })
         yield* sessionSvc.addKnowledge(sessionID, {
-          id: `k-${Date.now()}`, type: "execution-result", content: JSON.stringify(result.right),
-          source: input.specialist.id, confidence: result.right.confidence,
+          id: `k-${Date.now()}`, type: "execution-result", content: JSON.stringify(result.value),
+          source: input.specialist.id, confidence: result.value.confidence,
           timestamp: Date.now(), owner: input.specialist.id,
           provenance: [], dependencies: [],
         })
         yield* sessionSvc.updateStatus(sessionID, "completed")
-        yield* budget.consumeTime(result.right.executionTime)
-        return { runtimeResult, specialistResult: result.right, cached: false, attempts: attempt, sessionID, cloudExecuted, budgetRemaining }
+        yield* budget.consumeTime(result.value.executionTime)
+        return { runtimeResult, specialistResult: result.value, cached: false, attempts: attempt, sessionID, cloudExecuted, budgetRemaining }
       }
 
       if (attempt < maxAttempts) {
         const fallbackDecision = yield* fallback.decide(
-          fromSpecialistResult(result.right, { attempt, cacheHit: false }),
+          fromSpecialistResult(result.value, { attempt, cacheHit: false }),
           {
             backupModel: input.modelAssignment?.fallback,
             attempts: attempt,
@@ -149,21 +147,21 @@ const execute: Interface["execute"] = Effect.fn("SpecialistRuntime.execute")(fun
         )
 
         if (!fallbackDecision.shouldRetry) {
-          const runtimeResult = fromSpecialistResult(result.right, { attempt, cacheHit: false })
+          const runtimeResult = fromSpecialistResult(result.value, { attempt, cacheHit: false })
           yield* sessionSvc.addMessage(sessionID, {
             id: `fb-${Date.now()}`, from: "system", to: input.specialist.id,
             type: "warning", content: fallbackDecision.reason,
             timestamp: Date.now(), confidence: undefined,
           })
           yield* sessionSvc.updateStatus(sessionID, "completed")
-          yield* budget.consumeTime(result.right.executionTime)
-          return { runtimeResult, specialistResult: result.right, cached: false, attempts: attempt, sessionID, cloudExecuted, budgetRemaining }
+          yield* budget.consumeTime(result.value.executionTime)
+          return { runtimeResult, specialistResult: result.value, cached: false, attempts: attempt, sessionID, cloudExecuted, budgetRemaining }
         }
 
         yield* budget.incrementRetries()
       }
     } else {
-      lastError = result.left.message
+      lastError = "Execution failed"
       yield* budget.incrementRetries()
     }
   }
@@ -176,7 +174,7 @@ const execute: Interface["execute"] = Effect.fn("SpecialistRuntime.execute")(fun
 
   yield* sessionSvc.updateStatus(sessionID, "failed")
   return yield* Effect.die(new Error(lastError ?? "Specialist execution failed after max attempts"))
-})
+}) as Interface["execute"]
 
 const layer = Layer.effect(
   Service,

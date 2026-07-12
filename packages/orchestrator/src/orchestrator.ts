@@ -41,6 +41,7 @@ import { PromptAugmentation as PromptAugmentationService } from "./integration/p
 import { AgentEnhancer } from "./integration/agent-enhancer"
 import { AgentAdapter } from "./integration/agent-adapter"
 import { ApplicationProfile } from "./application/application-profile"
+import { ApplicationRegistry } from "./application/application-registry"
 import { ApplicationAnalyzer } from "./application/application-analyzer"
 import { ApplicationCapabilities } from "./application/application-capabilities"
 import { ApplicationWorkflows } from "./application/application-workflows"
@@ -49,6 +50,18 @@ import { ApplicationConnectors } from "./application/application-connectors"
 import { ApplicationContext } from "./application/application-context"
 import { ApplicationDiscovery } from "./application/application-discovery"
 import { ApplicationIntelligence } from "./application/application-intelligence"
+import { DomainIntelligence } from "./application/domain-intelligence"
+import { BusinessIntelligence } from "./application/business-intelligence"
+import { WorkflowIntelligence } from "./application/workflow-intelligence"
+import { FeatureIntelligence } from "./application/feature-intelligence"
+import { ModuleIntelligence } from "./application/module-intelligence"
+import { ServiceIntelligence } from "./application/service-intelligence"
+import { IntegrationIntelligence } from "./application/integration-intelligence"
+import { OrganizationIntelligence } from "./application/organization-intelligence"
+import { ApplicationMemory } from "./application/application-memory"
+import { ApplicationSummaryEngine } from "./application/application-summary"
+import { ApplicationHealth } from "./application/application-health"
+import { ApplicationMetrics } from "./application/application-metrics"
 import { ExecutionAdvisor } from "./intelligence/execution-advisor"
 import { ContextCompressor } from "./intelligence/context-compressor"
 import { RuntimeMetrics } from "./runtime/runtime-metrics"
@@ -122,6 +135,19 @@ import { PlanningOptimizer } from "./learning/planning-optimizer"
 import { KnowledgeFeedback } from "./learning/knowledge-feedback"
 import { ExecutionFeedback } from "./learning/execution-feedback"
 import { LearningMetrics } from "./learning/learning-metrics"
+import { CollaborationPolicy } from "./collaboration/collaboration-policy"
+import { ConsensusEngine } from "./collaboration/consensus-engine"
+import { ConflictResolution } from "./collaboration/conflict-resolution"
+import { DiscussionModerator } from "./collaboration/discussion-moderator"
+import { PeerReviewEngine } from "./collaboration/peer-review-engine"
+import { SharedWorkspace } from "./collaboration/shared-workspace"
+import { SpecialistCoordinator } from "./collaboration/specialist-coordinator"
+import { SpecialistScoreboard } from "./collaboration/specialist-scoreboard"
+import { SpecialistMemory } from "./collaboration/specialist-memory"
+import { ReviewManager } from "./collaboration/review-manager"
+import { CollaborationSession as CollaborationSessionService } from "./collaboration/collaboration-session"
+import { CollaborationEngine as CollaborationEngineService } from "./collaboration/collaboration-engine"
+import { CollaborationMetricsAggregator } from "./collaboration/collaboration-metrics"
 
 export interface PhaseEntry {
   readonly phase: string
@@ -146,10 +172,6 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/or
 
 function recordEntry(entries: PhaseEntry[], phase: string, durationMs: number, result: string): PhaseEntry[] {
   return [...entries, { phase, durationMs, result, error: undefined }]
-}
-
-export const Config = {
-  minimumConfidence: 0.65,
 }
 
 const orchestrate = Effect.fn("OrchestratorService.orchestrate")(function* (input) {
@@ -320,23 +342,24 @@ const orchestrate = Effect.fn("OrchestratorService.orchestrate")(function* (inpu
     source: "classify",
   }
 
-  const mutKB = KnowledgeBundle.empty(classification.type) as unknown as Record<string, unknown>
-  mutKB.planMetadata = planMetadata
-  mutKB.knowledgeRequirements = capabilityProfile.requirements.map((r) => ({
-    domain: r.capability,
-    description: `Capability requirement: ${r.capability} (weight ${r.weight})`,
-    required: !r.optional,
-  }))
-  mutKB.searchTargets = classification.requiresSearch
-    ? [{ pattern: classification.type, description: "Search for relevant code", priority: 1, type: "code" }]
-    : undefined
-  mutKB.verificationTargets = classification.requiresVerification
-    ? [{ target: classification.type, criteria: "Verify task requirements", priority: 1 }]
-    : undefined
-  mutKB.executionNotes = dispatchPlan.requiredAgents.length > 0
-    ? [`Requires ${dispatchPlan.requiredAgents.join(", ")} agents`]
-    : undefined
-  const knowledgeBundle = mutKB as unknown as ReturnType<typeof KnowledgeBundle.empty>
+  const knowledgeBundle: KnowledgeBundle = {
+    ...KnowledgeBundle.empty(classification.type),
+    planMetadata,
+    knowledgeRequirements: capabilityProfile.requirements.map((r) => ({
+      domain: r.capability,
+      description: `Capability requirement: ${r.capability} (weight ${r.weight})`,
+      required: !r.optional,
+    })),
+    searchTargets: classification.requiresSearch
+      ? [{ pattern: classification.type, description: "Search for relevant code", priority: 1, type: "code" as const }]
+      : undefined,
+    verificationTargets: classification.requiresVerification
+      ? [{ target: classification.type, criteria: "Verify task requirements", priority: 1 }]
+      : undefined,
+    executionNotes: dispatchPlan.requiredAgents.length > 0
+      ? [`Requires ${dispatchPlan.requiredAgents.join(", ")} agents`]
+      : undefined,
+  }
 
   return {
     needsOrchestration: dispatchPlan.requiredAgents.length > 0,
@@ -474,6 +497,7 @@ const layer = Layer.effect(
       RuntimeValidator.layer,
       RuntimeFallback.layer,
       ApplicationProfile.layer,
+      ApplicationRegistry.layer,
       ApplicationAnalyzer.layer,
       ApplicationCapabilities.layer,
       ApplicationWorkflows.layer,
@@ -482,6 +506,18 @@ const layer = Layer.effect(
       ApplicationContext.layer,
       ApplicationDiscovery.layer,
       ApplicationIntelligence.layer,
+      DomainIntelligence.layer,
+      BusinessIntelligence.layer,
+      WorkflowIntelligence.layer,
+      FeatureIntelligence.layer,
+      ModuleIntelligence.layer,
+      ServiceIntelligence.layer,
+      IntegrationIntelligence.layer,
+      OrganizationIntelligence.layer,
+      ApplicationMemory.layer,
+      ApplicationSummaryEngine.layer,
+      ApplicationHealth.layer,
+      ApplicationMetrics.layer,
       ExecutionSummaryView.layer,
       RepositoryView.layer,
       ArchitectureView.layer,
@@ -522,6 +558,19 @@ const layer = Layer.effect(
       KnowledgeFeedback.layer,
       ExecutionFeedback.layer,
       LearningMetrics.layer,
+      CollaborationPolicy.layer,
+      ConsensusEngine.layer,
+      ConflictResolution.layer,
+      DiscussionModerator.layer,
+      PeerReviewEngine.layer,
+      SharedWorkspace.layer,
+      SpecialistCoordinator.layer,
+      SpecialistScoreboard.layer,
+      SpecialistMemory.layer,
+      ReviewManager.layer,
+      CollaborationSessionService.layer,
+      CollaborationEngineService.layer,
+      CollaborationMetricsAggregator.layer,
     ),
   ),
 )

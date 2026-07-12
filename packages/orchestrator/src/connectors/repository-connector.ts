@@ -26,7 +26,7 @@ const prepare: Interface["prepare"] = Effect.fn("RepositoryConnector.prepare")(f
     confidence: hasData ? 0.9 : 0.3,
     error: undefined,
   }
-})
+}) as (pkg: ExecutionPackage) => Effect.Effect<ConnectorResult, never, never>
 
 const layer = Layer.effect(
   Service,

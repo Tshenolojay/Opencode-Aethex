@@ -6,6 +6,7 @@ import { KnowledgeBundle } from "../knowledge/knowledge"
 export const runExecutionStage = Effect.fn("Pipeline.execution")(function* (state: PipelineState) {
   const runtimeManager = yield* RuntimeManager.Service
 
+  const tExec = Date.now()
   const runnerOutput = yield* runtimeManager.run({
     graph: state.executionGraph!,
     policy: state.policy!,
@@ -23,7 +24,7 @@ export const runExecutionStage = Effect.fn("Pipeline.execution")(function* (stat
     runtimeOutput: runnerOutput,
     diagnostics: [
       ...state.diagnostics,
-      { phase: "specialist-execution", durationMs: 0, result: `completed=${runnerOutput.completed.length} failed=${runnerOutput.failed.length} cacheHits=${runnerOutput.metrics.cacheHitCount}`, error: undefined },
+      { phase: "specialist-execution", durationMs: Date.now() - tExec, result: `completed=${runnerOutput.completed.length} failed=${runnerOutput.failed.length} cacheHits=${runnerOutput.metrics.cacheHitCount}`, error: undefined },
     ],
   } as PipelineState
 })

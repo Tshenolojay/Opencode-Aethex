@@ -30,7 +30,7 @@ const prepare: Interface["prepare"] = Effect.fn("ContextIntelligence.prepare")(f
 
   const criticalFields = ["repositorySummary", "relevantFiles", "architectureSummary"] as const
   const missingCriticalFields = criticalFields.filter((f) => {
-    const v = (bundle as Record<string, unknown>)[f]
+    const v = (bundle as unknown as Record<string, unknown>)[f]
     return v === undefined || (Array.isArray(v) && v.length === 0)
   }) as readonly string[]
 

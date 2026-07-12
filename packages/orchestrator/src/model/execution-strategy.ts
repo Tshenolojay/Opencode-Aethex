@@ -13,6 +13,11 @@ export type ExecutionStrategyType =
   | "cost-optimized"
   | "latency-optimized"
   | "balanced"
+  | "pipeline"
+  | "review-pipeline"
+  | "consensus-pipeline"
+  | "verification-pipeline"
+  | "planning-pipeline"
 
 export interface ExecutionStrategyProfile {
   readonly type: ExecutionStrategyType
@@ -80,6 +85,36 @@ export const STRATEGIES: Record<ExecutionStrategyType, ExecutionStrategyProfile>
     allowsParallelExecution: true, allowsSequentialExecution: true,
     priorityOnQuality: true, priorityOnSpeed: true, priorityOnCost: false,
     recommendedFor: [],
+  },
+  "pipeline": {
+    type: "pipeline", name: "Pipeline", description: "Run specialists through a shared advisory pipeline",
+    allowsParallelExecution: false, allowsSequentialExecution: true,
+    priorityOnQuality: true, priorityOnSpeed: false, priorityOnCost: false,
+    recommendedFor: [],
+  },
+  "review-pipeline": {
+    type: "review-pipeline", name: "Review Pipeline", description: "Specialists produce findings then peer-review one another",
+    allowsParallelExecution: false, allowsSequentialExecution: true,
+    priorityOnQuality: true, priorityOnSpeed: false, priorityOnCost: false,
+    recommendedFor: ["code-generation", "refactoring", "bug-fix"],
+  },
+  "consensus-pipeline": {
+    type: "consensus-pipeline", name: "Consensus Pipeline", description: "Specialists collaborate then build a unified recommendation",
+    allowsParallelExecution: false, allowsSequentialExecution: true,
+    priorityOnQuality: true, priorityOnSpeed: false, priorityOnCost: false,
+    recommendedFor: ["architecture-design", "planning", "debugging"],
+  },
+  "verification-pipeline": {
+    type: "verification-pipeline", name: "Verification Pipeline", description: "Emphasize verification specialist sign-off",
+    allowsParallelExecution: false, allowsSequentialExecution: true,
+    priorityOnQuality: true, priorityOnSpeed: false, priorityOnCost: false,
+    recommendedFor: ["testing", "security-review"],
+  },
+  "planning-pipeline": {
+    type: "planning-pipeline", name: "Planning Pipeline", description: "Specialists collaborate on a coordinated plan",
+    allowsParallelExecution: false, allowsSequentialExecution: true,
+    priorityOnQuality: true, priorityOnSpeed: false, priorityOnCost: false,
+    recommendedFor: ["planning"],
   },
 }
 

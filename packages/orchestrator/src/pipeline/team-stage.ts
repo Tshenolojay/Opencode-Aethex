@@ -21,41 +21,32 @@ export const runTeamStage = Effect.fn("Pipeline.team")(function* (state: Pipelin
   const coordinator = yield* TeamCoordinator.Service
   const runtimeMetrics = yield* RuntimeMetrics.Service
 
-  const mutPkg = state.executionPackage as unknown as Record<string, unknown>
-
   const tTeamBuild = Date.now()
   const virtualTeam = yield* teamService.build(state.executionPackage)
-  mutPkg.virtualTeam = virtualTeam
   yield* runtimeMetrics.recordTeamDecompositionTime(Date.now() - tTeamBuild)
 
   const tDecompose = Date.now()
   const taskGraph = yield* decomposer.decompose(state.executionPackage)
-  mutPkg.taskGraph = taskGraph
   yield* runtimeMetrics.recordTeamDecompositionTime(Date.now() - tDecompose)
 
   const tAllocate = Date.now()
   const workAssignments = yield* allocator.allocate(taskGraph, virtualTeam, state.executionPackage)
-  mutPkg.workAssignments = workAssignments
   yield* runtimeMetrics.recordTeamAllocationTime(Date.now() - tAllocate)
 
   const tWorkspace = Date.now()
   const workspaceSummaries = yield* workspaceService.buildWorkspaces(virtualTeam, state.executionPackage)
-  mutPkg.workspaceSummaries = workspaceSummaries
   yield* runtimeMetrics.recordTeamWorkspaceTime(Date.now() - tWorkspace)
 
   const tDiscussion = Date.now()
   const teamDiscussion = yield* discussionService.build(virtualTeam, workspaceSummaries)
-  mutPkg.teamDiscussion = teamDiscussion
   yield* runtimeMetrics.recordTeamDiscussionTime(Date.now() - tDiscussion)
 
   const tReview = Date.now()
   const reviewPipeline = yield* reviewService.run(state.executionPackage)
-  mutPkg.reviewPipeline = reviewPipeline
   yield* runtimeMetrics.recordTeamReviewTime(Date.now() - tReview)
 
   const tMarketplace = Date.now()
   const capabilityMarketplace = yield* marketplaceService.build(virtualTeam)
-  mutPkg.capabilityMarketplace = capabilityMarketplace
 
   const tCoordinate = Date.now()
   const teamPlan = yield* coordinator.coordinate({
@@ -66,14 +57,26 @@ export const runTeamStage = Effect.fn("Pipeline.team")(function* (state: Pipelin
     reviewPipeline,
     capabilityMarketplace,
   })
-  mutPkg.teamPlan = teamPlan
   yield* runtimeMetrics.recordTeamCollaborationTime(Date.now() - tCoordinate)
+
+  const tStage = Date.now()
 
   return {
     ...state,
+    executionPackage: {
+      ...state.executionPackage,
+      virtualTeam,
+      taskGraph,
+      workAssignments,
+      workspaceSummaries,
+      teamDiscussion,
+      reviewPipeline,
+      capabilityMarketplace,
+      teamPlan,
+    },
     diagnostics: [
       ...state.diagnostics,
-      { phase: "virtual-team-framework", durationMs: 0, result: `team=${virtualTeam.activeParticipants.length} tasks=${taskGraph.units.length} reviews=${reviewPipeline.stages.length}`, error: undefined },
+      { phase: "virtual-team-framework", durationMs: Date.now() - tStage, result: `team=${virtualTeam.activeParticipants.length} tasks=${taskGraph.units.length} reviews=${reviewPipeline.stages.length}`, error: undefined },
     ],
   } as PipelineState
 })

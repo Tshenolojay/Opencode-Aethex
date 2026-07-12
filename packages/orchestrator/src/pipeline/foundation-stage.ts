@@ -8,11 +8,13 @@ export const runFoundationStage = Effect.fn("Pipeline.foundation")(function* (st
   const classifier = yield* TaskClassifier.Service
   const confidence = yield* ConfidenceEngine.Service
 
+  const tClassify = Date.now()
   const classification = yield* classifier.classify({
     text: state.input.promptText,
     filesAttached: state.input.filesAttached,
     conversationLength: state.input.conversationLength,
   })
+  const classMs = Date.now() - tClassify
 
   const richSignals = [
     { signal: "prompt-text" as const, text: state.input.promptText, weight: 1.0 },
@@ -38,6 +40,7 @@ export const runFoundationStage = Effect.fn("Pipeline.foundation")(function* (st
     projectInfo: state.input.projectInfo,
   })
 
+  const tConf = Date.now()
   const confidenceLevel = yield* confidence.estimate({
     classification,
     repositorySize: state.input.repositorySize,
@@ -47,6 +50,7 @@ export const runFoundationStage = Effect.fn("Pipeline.foundation")(function* (st
     contextAvailable: state.input.contextAvailable,
     previousToolResults: state.input.previousToolResults,
   })
+  const confMs = Date.now() - tConf
 
   const confidenceScore = yield* confidence.estimateWithScore({
     classification,
@@ -69,8 +73,8 @@ export const runFoundationStage = Effect.fn("Pipeline.foundation")(function* (st
     confidenceScore,
     diagnostics: [
       ...state.diagnostics,
-      { phase: "classification", durationMs: 0, result: `type=${classification.type}`, error: undefined },
-      { phase: "confidence", durationMs: 0, result: `level=${confidenceLevel}`, error: undefined },
+      { phase: "classification", durationMs: classMs, result: `type=${classification.type}`, error: undefined },
+      { phase: "confidence", durationMs: confMs, result: `level=${confidenceLevel}`, error: undefined },
     ],
   } as PipelineState
 })

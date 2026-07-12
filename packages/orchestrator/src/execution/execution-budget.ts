@@ -89,7 +89,7 @@ const layer = Layer.effect(
           consumption: update(s.consumption),
         }))
         return true
-      })
+      })()
     }
 
     const result: Interface = {

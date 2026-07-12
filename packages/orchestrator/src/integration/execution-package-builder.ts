@@ -38,33 +38,31 @@ export interface Interface {
 export class Service extends Context.Service<Service, Interface>()("@opencode/orchestrator/ExecutionPackageBuilder") {}
 
 const build: Interface["build"] = Effect.fn("ExecutionPackageBuilder.build")(function* (input) {
-  const pkg = emptyPackage(input.sessionID) as unknown as Record<string, unknown>
-  const src = input as unknown as Record<string, unknown>
-
-  pkg.taskClassification = src.taskClassification
-  pkg.classifications = src.classifications
-  pkg.confidence = src.confidence
-  pkg.confidenceScore = src.confidenceScore
-  pkg.capabilityPlan = src.capabilityPlan
-  pkg.specialistPlan = src.specialistPlan
-  pkg.knowledgePlan = src.knowledgePlan
-  pkg.dispatchPlan = src.dispatchPlan
-  pkg.planningPolicy = src.planningPolicy
-  pkg.executionGraph = src.executionGraph
-  pkg.knowledgeBundle = src.knowledgeBundle
-  pkg.repositoryIntelligence = src.repositoryIntelligence
-  pkg.dependencyIntelligence = src.dependencyIntelligence
-  pkg.architectureIntelligence = src.architectureIntelligence
-  pkg.documentationIntelligence = src.documentationIntelligence
-  pkg.verificationIntelligence = src.verificationIntelligence
-  pkg.contextIntelligence = src.contextIntelligence
-  pkg.runtimeMetrics = src.runtimeMetrics
-  pkg.executionNotes = src.executionNotes
-
-  pkg.conversationSummary = input.knowledgeBundle.conversationSummary
-  pkg.modelRecommendation = input.capabilityPlan?.reason
-
-  return pkg as unknown as ExecutionPackage
+  const empty = emptyPackage(input.sessionID)
+  return {
+    ...empty,
+    taskClassification: input.taskClassification,
+    classifications: input.classifications,
+    confidence: input.confidence,
+    confidenceScore: input.confidenceScore,
+    capabilityPlan: input.capabilityPlan,
+    specialistPlan: input.specialistPlan,
+    knowledgePlan: input.knowledgePlan,
+    dispatchPlan: input.dispatchPlan,
+    planningPolicy: input.planningPolicy,
+    executionGraph: input.executionGraph,
+    knowledgeBundle: input.knowledgeBundle,
+    repositoryIntelligence: input.repositoryIntelligence,
+    dependencyIntelligence: input.dependencyIntelligence,
+    architectureIntelligence: input.architectureIntelligence,
+    documentationIntelligence: input.documentationIntelligence,
+    verificationIntelligence: input.verificationIntelligence,
+    contextIntelligence: input.contextIntelligence,
+    runtimeMetrics: input.runtimeMetrics,
+    executionNotes: input.executionNotes,
+    conversationSummary: input.knowledgeBundle.conversationSummary,
+    modelRecommendation: input.capabilityPlan?.reason,
+  }
 })
 
 const layer = Layer.effect(

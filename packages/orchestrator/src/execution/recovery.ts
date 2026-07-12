@@ -108,14 +108,14 @@ const withTimeout: Interface["withTimeout"] = function <A, E>(
   return effect.pipe(
     Effect.timeout(timeoutMs),
     Effect.catchIf(() => true, () => effect),
-  )
+  ) as Effect.Effect<A, E>
 }
 
 const cancel: Interface["cancel"] = function <A, E>(effect: Effect.Effect<A, E>) {
   return effect.pipe(
     Effect.timeout(100),
     Effect.catchIf(() => true, () => Effect.succeed(undefined as unknown as A)),
-  )
+  ) as Effect.Effect<A, E>
 }
 
 function planFallback(state: RetryState, config?: Partial<RecoveryConfig>): FallbackPlan {

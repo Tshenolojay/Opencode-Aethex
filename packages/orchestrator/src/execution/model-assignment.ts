@@ -36,7 +36,7 @@ const assign: Interface["assign"] = Effect.fn("ModelAssignment.assign")(function
   const policies = yield* SelectionPolicies.Service
   const capRegistry = yield* CapabilityRegistry.Service
 
-  const required = input.specialistCapabilities.filter((c) => true) as Capability[]
+  const required = input.specialistCapabilities.filter((c: string) => true) as Capability[]
 
   const policy = input.policyName
     ? policies.getPolicy(input.policyName) ?? SelectionPolicies.DEFAULT_POLICY
@@ -77,7 +77,7 @@ const assign: Interface["assign"] = Effect.fn("ModelAssignment.assign")(function
     policyUsed: policy.name,
     strategyUsed: policy.modelStrategy,
   }
-})
+}) as unknown as Interface["assign"]
 
 const layer = Layer.effect(
   Service,

@@ -49,7 +49,7 @@ const schedule: Interface["schedule"] = Effect.fn("ExecutionScheduler.schedule")
   const registry = yield* SpecialistRegistry.Service
   const budget = yield* ExecutionBudget.Service
   const allProfiles = yield* registry.getAll()
-  const specialistNodes = graph.nodes.filter((n) => n.type === "specialist")
+  const specialistNodes = graph.nodes.filter((n: GraphNode) => n.type === "specialist")
 
   if (specialistNodes.length === 0) {
     return { batches: [], totalBatches: 0, estimatedDurationMs: 0, budgetAware: false, capabilityAware: false, confidenceAware: false }
@@ -76,12 +76,12 @@ const schedule: Interface["schedule"] = Effect.fn("ExecutionScheduler.schedule")
 
   if (confidenceAware && input.capabilityPlan) {
     const highPriority = new Set(input.capabilityPlan.highPriority)
-    orderedNodes = Array.sort(orderedNodes, Order.flip(Order.mapInput(Order.Number, (n) => highPriority.has(n.id) ? 2 : 1)))
+    orderedNodes = Array.sort(orderedNodes, Order.flip(Order.mapInput(Order.Number, (n: GraphNode) => highPriority.has(n.id) ? 2 : 1)))
   }
 
   if (capabilityAware && input.capabilityPlan) {
     const required = new Set(input.capabilityPlan.required)
-    orderedNodes = Array.sort(orderedNodes, Order.flip(Order.mapInput(Order.Number, (n) => required.has(n.id) ? 2 : 1)))
+    orderedNodes = Array.sort(orderedNodes, Order.flip(Order.mapInput(Order.Number, (n: GraphNode) => required.has(n.id) ? 2 : 1)))
   }
 
   const batches: ScheduleBatch[] = []
@@ -139,7 +139,7 @@ const schedule: Interface["schedule"] = Effect.fn("ExecutionScheduler.schedule")
   }
 
   const estimatedDurationMs = batches.reduce((acc, b) => {
-    const nodes = b.nodeIDs.map((id) => graph.nodes.find((n) => n.id === id)).filter(Boolean) as GraphNode[]
+    const nodes = b.nodeIDs.map((id) => graph.nodes.find((n: GraphNode) => n.id === id)).filter(Boolean) as GraphNode[]
     const maxInBatch = nodes.reduce((m, n) => Math.max(m, n.estimatedDurationMs), 0)
     return acc + maxInBatch
   }, 0)
@@ -154,7 +154,7 @@ const schedule: Interface["schedule"] = Effect.fn("ExecutionScheduler.schedule")
     capabilityAware: capabilityAware ?? false,
     confidenceAware: confidenceAware ?? false,
   }
-})
+}) as unknown as Interface["schedule"]
 
 const layer = Layer.effect(
   Service,

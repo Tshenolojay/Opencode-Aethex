@@ -1,8 +1,9 @@
 export * as ProviderCatalog from "./provider-catalog"
 
-import { Array, Context, Effect, Layer } from "effect"
-import { Catalog } from "@opencode-ai/core/catalog"
-import type { ProviderV2 } from "@opencode-ai/core/provider"
+import { Context, Effect, Layer } from "effect"
+import { Catalog } from "../catalog"
+
+type ProviderInfo = Catalog.ProviderData
 
 export interface ProviderMetadata {
   readonly providerID: string
@@ -28,16 +29,16 @@ const HEALTH_BY_PROVIDER: Record<string, number> = {
   deepseek: 0.88, openrouter: 0.85,
 }
 
-function estimateHealth(provider: ProviderV2.Info): number {
+function estimateHealth(provider: ProviderInfo): number {
   return HEALTH_BY_PROVIDER[provider.id] ?? 0.80
 }
 
-function estimateAvailability(provider: ProviderV2.Info): number {
+function estimateAvailability(provider: ProviderInfo): number {
   if (provider.disabled) return 0
   return HEALTH_BY_PROVIDER[provider.id] ? (HEALTH_BY_PROVIDER[provider.id] - 0.05) : 0.75
 }
 
-function estimateLatency(provider: ProviderV2.Info): number {
+function estimateLatency(provider: ProviderInfo): number {
   const name = provider.name?.toLowerCase() ?? provider.id.toLowerCase()
   if (name.includes("openai") || name.includes("anthropic") || name.includes("google")) return 400
   if (name.includes("mistral") || name.includes("deepseek")) return 600
@@ -55,7 +56,7 @@ export interface Interface {
 export class Service extends Context.Service<Service, Interface>()("@opencode/orchestrator/ProviderCatalog") {}
 
 function enrichProvider(
-  provider: ProviderV2.Info,
+  provider: ProviderInfo,
   modelCount: number,
   activeModelCount: number,
   avgCost: number,
@@ -84,7 +85,7 @@ const layer = Layer.effect(
 
     const result: Interface = {
       getProvider: Effect.fn("ProviderCatalog.getProvider")(function* (providerID) {
-        const provider = yield* catalog.provider.get(providerID as any)
+        const provider = yield* catalog.provider.get(providerID)
         if (!provider) return
         const models = yield* catalog.model.all()
         const providerModels = models.filter((m) => m.providerID === provider.id)

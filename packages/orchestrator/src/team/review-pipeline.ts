@@ -86,8 +86,8 @@ const run: Interface["run"] = Effect.fn("ReviewPipeline.run")(function* (pkg) {
     ? `All ${stages.filter((s) => s.status === "completed").length}/${stages.length} stages completed. Specialists assigned: ${allSpecialists.filter((s) => s.getContract().reviews.length > 0).map((s) => s.id).join(", ")}.`
     : undefined
 
-  return { stages, finalNarrative }
-})
+  return { stages, finalNarrative } as ReviewPipelineState
+}) as Interface["run"]
 
 const layer = Layer.effect(
   Service,

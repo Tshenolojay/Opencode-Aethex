@@ -3,7 +3,8 @@ export * as ApplicationProfile from "./application-profile"
 import { Context, Effect, Layer, Ref } from "effect"
 
 export type ApplicationType = "web" | "desktop" | "mobile" | "cli" | "service" | "library" | "platform" | "unknown"
-export type BusinessDomain = "software-development" | "commerce" | "crm" | "erp" | "analytics" | "automation" | "communication" | "research" | "marketing" | "scheduling" | "document-management" | "general"
+export type BusinessDomain = "software-development" | "commerce" | "crm" | "erp" | "analytics" | "automation" | "communication" | "research" | "marketing" | "scheduling" | "document-management" | "general" | "healthcare" | "education" | "government" | "e-commerce" | "accounting" | "finance"
+export type DeploymentModel = "cloud" | "on-premise" | "hybrid" | "edge" | "unknown"
 
 export interface ApplicationModule {
   readonly name: string
@@ -18,17 +19,31 @@ export interface ApplicationPermission {
   readonly actions: readonly string[]
 }
 
+export interface UserRole {
+  readonly name: string
+  readonly description: string
+  readonly permissions: readonly string[]
+}
+
 export interface ApplicationProfile {
   readonly name: string
   readonly version: string | undefined
   readonly applicationType: ApplicationType
   readonly businessDomain: BusinessDomain
   readonly description: string
+  readonly purpose?: string
+  readonly businessGoals?: readonly string[]
+  readonly userRoles?: readonly UserRole[]
   readonly modules: readonly ApplicationModule[]
+  readonly featureInventory?: readonly string[]
   readonly supportedWorkflows: readonly string[]
   readonly capabilities: readonly string[]
   readonly permissions: readonly ApplicationPermission[]
   readonly executionBoundaries: readonly string[]
+  readonly integrations?: readonly string[]
+  readonly deploymentModel?: DeploymentModel
+  readonly technologyStack?: readonly string[]
+  readonly operationalWorkflows?: readonly string[]
 }
 
 export interface Interface {

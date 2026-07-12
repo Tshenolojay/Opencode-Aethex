@@ -18,9 +18,9 @@ export const optional = <S extends Schema.Top>(schema: S) =>
   )
 
 export const statics =
-  <S extends object, M extends Record<string, unknown>>(methods: (schema: S) => M) =>
-  (schema: S): S & M =>
-    Object.assign(schema, methods(schema))
+  <M extends Record<string, unknown>>(methods: (schema: Schema.Top) => M) =>
+  <S extends object>(schema: S): S & M =>
+    Object.assign(schema, methods(schema as unknown as Schema.Top))
 
 export const DateTimeUtcFromMillis = Schema.Finite.pipe(
   Schema.decodeTo(Schema.DateTimeUtc, {

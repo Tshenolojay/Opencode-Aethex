@@ -28,46 +28,70 @@ export const runIntelligenceStage = Effect.fn("Pipeline.intelligence")(function*
 
   const collected = yield* collector.collect(results)
 
-  const knowledgeBundle = yield* merger.merge({
+  const baseBundle = yield* merger.merge({
     base: KnowledgeBundle.empty(state.classification.type),
     collected,
     results,
   })
-  knowledgeBundle.planMetadata = {
-    planStartTime: Date.now(),
-    planEndTime: undefined,
-    knowledgeVersion: 1,
-    source: "specialist-execution" as const,
+  const knowledgeBundle: KnowledgeBundle = {
+    ...baseBundle,
+    planMetadata: {
+      planStartTime: Date.now(),
+      planEndTime: undefined,
+      knowledgeVersion: 1,
+      source: "project-default" as const,
+    },
+    knowledgeRequirements: results.length > 0
+      ? results[0]?.collectedKnowledge.map((k) => ({
+          domain: k.type,
+          description: `Knowledge entry: ${k.type}`,
+          required: true,
+        }))
+      : undefined,
+    searchTargets: state.classification.requiresSearch
+      ? [{ pattern: state.classification.type, description: "Search for relevant code", priority: 1, type: "code" as const }]
+      : undefined,
+    verificationTargets: state.classification.requiresVerification
+      ? [{ target: state.classification.type, criteria: "Verify task requirements", priority: 1 }]
+      : undefined,
   }
-  knowledgeBundle.knowledgeRequirements = results.length > 0
-    ? results[0]?.collectedKnowledge.map((k) => ({
-        domain: k.type,
-        description: `Knowledge entry: ${k.type}`,
-        required: true,
-      }))
-    : undefined
-  knowledgeBundle.searchTargets = state.classification.requiresSearch
-    ? [{ pattern: state.classification.type, description: "Search for relevant code", priority: 1, type: "code" as const }]
-    : undefined
-  knowledgeBundle.verificationTargets = state.classification.requiresVerification
-    ? [{ target: state.classification.type, criteria: "Verify task requirements", priority: 1 }]
-    : undefined
 
+  const tValid = Date.now()
   const validatedResults = yield* Effect.forEach(
     results,
     (r) => validator.validate(r),
   )
+  const validMs = Date.now() - tValid
   const totalInvalid = validatedResults.reduce((acc, v) => acc + v.invalidCount, 0)
 
+  const tRank = Date.now()
   const allEntries = results.flatMap((r) => r.collectedKnowledge)
   const ranked = yield* rankingEngine.rank(allEntries, state.input.promptText)
+  const rankMs = Date.now() - tRank
 
+  const tRepo = Date.now()
   const repoAnalysis = yield* repoIntelligence.analyze(knowledgeBundle)
+  const repoMs = Date.now() - tRepo
+
+  const tDep = Date.now()
   const depAnalysis = yield* depIntelligence.analyze(knowledgeBundle)
+  const depMs = Date.now() - tDep
+
+  const tDoc = Date.now()
   const docAnalysis = yield* docIntelligence.analyze(knowledgeBundle)
+  const docMs = Date.now() - tDoc
+
+  const tArch = Date.now()
   const archAnalysis = yield* archIntelligence.analyze(knowledgeBundle)
+  const archMs = Date.now() - tArch
+
+  const tVer = Date.now()
   const verAnalysis = yield* verIntelligence.analyze(knowledgeBundle)
+  const verMs = Date.now() - tVer
+
+  const tCtx = Date.now()
   const ctxReport = yield* contextIntelligence.prepare(knowledgeBundle)
+  const ctxMs = Date.now() - tCtx
 
   return {
     ...state,
@@ -80,14 +104,14 @@ export const runIntelligenceStage = Effect.fn("Pipeline.intelligence")(function*
     ctxReport,
     diagnostics: [
       ...state.diagnostics,
-      { phase: "knowledge-validation", durationMs: 0, result: `validated=${validatedResults.reduce((a, v) => a + v.entries.length, 0)} invalid=${totalInvalid}`, error: undefined },
-      { phase: "knowledge-ranking", durationMs: 0, result: `ranked=${ranked.length}`, error: undefined },
-      { phase: "repository-intelligence", durationMs: 0, result: `hotspots=${repoAnalysis.hotspots.length}`, error: undefined },
-      { phase: "dependency-intelligence", durationMs: 0, result: `chains=${depAnalysis.chains.length}`, error: undefined },
-      { phase: "documentation-intelligence", durationMs: 0, result: `docs=${docAnalysis.docs.length}`, error: undefined },
-      { phase: "architecture-intelligence", durationMs: 0, result: `subsystems=${archAnalysis.subsystems.length}`, error: undefined },
-      { phase: "verification-intelligence", durationMs: 0, result: `passed=${verAnalysis.mergedResults.filter((r) => r.passed).length}`, error: undefined },
-      { phase: "context-intelligence", durationMs: 0, result: `quality=${(ctxReport.averageConfidence * 100).toFixed(0)}%`, error: undefined },
+      { phase: "knowledge-validation", durationMs: validMs, result: `validated=${validatedResults.reduce((a, v) => a + v.entries.length, 0)} invalid=${totalInvalid}`, error: undefined },
+      { phase: "knowledge-ranking", durationMs: rankMs, result: `ranked=${ranked.length}`, error: undefined },
+      { phase: "repository-intelligence", durationMs: repoMs, result: `hotspots=${repoAnalysis.hotspots.length}`, error: undefined },
+      { phase: "dependency-intelligence", durationMs: depMs, result: `chains=${depAnalysis.chains.length}`, error: undefined },
+      { phase: "documentation-intelligence", durationMs: docMs, result: `docs=${docAnalysis.docs.length}`, error: undefined },
+      { phase: "architecture-intelligence", durationMs: archMs, result: `subsystems=${archAnalysis.subsystems.length}`, error: undefined },
+      { phase: "verification-intelligence", durationMs: verMs, result: `passed=${verAnalysis.mergedResults.filter((r) => r.passed).length}`, error: undefined },
+      { phase: "context-intelligence", durationMs: ctxMs, result: `quality=${(ctxReport.averageConfidence * 100).toFixed(0)}%`, error: undefined },
     ],
   } as PipelineState
 })

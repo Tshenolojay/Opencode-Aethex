@@ -57,8 +57,8 @@ const decide: Interface["decide"] = Effect.fn("DecisionEngine.decide")(function*
     includeDependencyReasoning,
     runContextCompression,
     performPlanningReuse,
-  }
-})
+  } as ReasoningDecisionSummary
+}) as Interface["decide"]
 
 const layer = Layer.effect(
   Service,

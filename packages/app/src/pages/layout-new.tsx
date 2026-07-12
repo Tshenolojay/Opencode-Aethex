@@ -1,18 +1,25 @@
-import { createEffect, Suspense, type ParentProps } from "solid-js"
+import { createEffect, createMemo, Show, Suspense, type ParentProps } from "solid-js"
 import { useNavigate } from "@solidjs/router"
+import { useLocation } from "@solidjs/router"
 import { DebugBar } from "@/components/debug-bar"
 import { HelpButton } from "@/components/help-button"
 import { Titlebar, type TitlebarUpdate } from "@/components/titlebar"
+import { WorkspaceLayout } from "@/components/workspace/workspace-layout"
 import { usePlatform } from "@/context/platform"
+import { useSettings } from "@/context/settings"
 import { setNavigate } from "@/utils/notification-click"
 import { setV2Toast, ToastRegion } from "@/utils/toast"
 
 export default function NewLayout(props: ParentProps) {
   const platform = usePlatform()
   const navigate = useNavigate()
+  const location = useLocation()
+  const settings = useSettings()
   setNavigate(navigate)
 
   createEffect(() => setV2Toast(true))
+
+  const isSessionRoute = createMemo(() => location.pathname.includes("/session/"))
 
   const update: TitlebarUpdate = {
     version: () => {
@@ -24,6 +31,10 @@ export default function NewLayout(props: ParentProps) {
     install: () => void platform.updater?.install(),
   }
 
+  const content = () => (
+    <Suspense>{props.children}</Suspense>
+  )
+
   return (
     <div
       class="relative bg-v2-background-bg-deep flex-1 min-h-0 min-w-0 flex flex-col select-none [&_input]:select-text [&_textarea]:select-text [&_[contenteditable]]:select-text"
@@ -33,8 +44,10 @@ export default function NewLayout(props: ParentProps) {
       }}
     >
       <Titlebar update={update} />
-      <main class="flex-1 min-h-0 min-w-0 overflow-x-hidden flex flex-col items-start contain-strict">
-        <Suspense>{props.children}</Suspense>
+      <main class="flex-1 min-h-0 min-w-0 flex flex-col contain-strict">
+        <Show when={isSessionRoute() && settings.general.newLayoutDesigns()} fallback={content()}>
+          <WorkspaceLayout>{content()}</WorkspaceLayout>
+        </Show>
       </main>
       {import.meta.env.DEV && <DebugBar inline />}
       <HelpButton />
