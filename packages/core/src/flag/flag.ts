@@ -5,6 +5,26 @@ export function truthy(key: string) {
   return value === "true" || value === "1"
 }
 
+// Phase 6 — read an OPENCODE_NEXUS_* var first, fall back to the legacy
+// OPENCODE_* name, and emit a one-time deprecation notice when the old
+// variable is actually set.
+const _nexusWarned = new Set<string>()
+function nexusEnv(suffix: string): string | undefined {
+  const neu = process.env["OPENCODE_NEXUS_" + suffix]
+  if (neu !== undefined) return neu
+  const legacy = process.env["OPENCODE_" + suffix]
+  if (legacy !== undefined) {
+    if (!_nexusWarned.has(suffix)) {
+      _nexusWarned.add(suffix)
+      process.stderr.write(
+        `[OpenCode Nexus] Deprecated: OPENCODE_${suffix} is set but will be removed in a future release. Use OPENCODE_NEXUS_${suffix} instead.\n`,
+      )
+    }
+    return legacy
+  }
+  return undefined
+}
+
 const copy = process.env["OPENCODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT"]
 const fff = process.env["OPENCODE_DISABLE_FFF"]
 
@@ -62,7 +82,7 @@ export const Flag = {
     return process.env["OPENCODE_TUI_CONFIG"]
   },
   get OPENCODE_CONFIG_DIR() {
-    return process.env["OPENCODE_CONFIG_DIR"]
+    return nexusEnv("CONFIG_DIR")
   },
   get OPENCODE_PURE() {
     return truthy("OPENCODE_PURE")

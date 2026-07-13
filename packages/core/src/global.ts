@@ -7,7 +7,7 @@ import { Flock } from "./util/flock"
 import { Flag } from "./flag/flag"
 import { makeGlobalNode } from "./effect/app-node"
 
-const app = "opencode"
+const app = "opencode-nexus"
 const data = path.join(xdgData!, app)
 const cache = path.join(xdgCache!, app)
 const config = path.join(xdgConfig!, app)
@@ -16,7 +16,7 @@ const tmp = path.join(os.tmpdir(), app)
 
 const paths = {
   get home() {
-    return process.env.OPENCODE_TEST_HOME ?? os.homedir()
+    return process.env.OPENCODE_NEXUS_HOME ?? process.env.OPENCODE_TEST_HOME ?? os.homedir()
   },
   data,
   bin: path.join(cache, "bin"),
@@ -32,6 +32,44 @@ export const Path = paths
 
 Flock.setGlobal({ state })
 
+// Phase 11 — first-launch migration from legacy config dirs into the new
+// `opencode-nexus` locations.  Copies non-destructively (never overwrites
+// existing files) and only runs once (the target dir won't exist yet).
+const legacyConfigDirs = [
+  path.join(os.homedir(), ".opencode"),
+  path.join(xdgConfig!, "opencode"),
+]
+
+async function copyDirNonOverwriting(src: string, dst: string): Promise<void> {
+  let entries: import("fs").Dirent[]
+  try {
+    entries = await fs.readdir(src, { withFileTypes: true })
+  } catch {
+    return
+  }
+  await fs.mkdir(dst, { recursive: true })
+  for (const entry of entries) {
+    if (entry.name === "bin" || entry.name === "repos") continue
+    const srcPath = path.join(src, entry.name)
+    const dstPath = path.join(dst, entry.name)
+    if (entry.isDirectory()) {
+      await copyDirNonOverwriting(srcPath, dstPath)
+    } else if (!fs.existsSync(dstPath)) {
+      await fs.copyFile(srcPath, dstPath)
+    }
+  }
+}
+
+async function migrateLegacyConfig() {
+  if (fs.existsSync(Path.config)) return
+  for (const legacy of legacyConfigDirs) {
+    if (fs.existsSync(legacy)) {
+      await copyDirNonOverwriting(legacy, Path.config)
+      break
+    }
+  }
+}
+
 await Promise.all([
   fs.mkdir(Path.data, { recursive: true }),
   fs.mkdir(Path.config, { recursive: true }),
@@ -40,6 +78,7 @@ await Promise.all([
   fs.mkdir(Path.log, { recursive: true }),
   fs.mkdir(Path.bin, { recursive: true }),
   fs.mkdir(Path.repos, { recursive: true }),
+  migrateLegacyConfig(),
 ])
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Global") {}

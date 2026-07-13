@@ -147,7 +147,7 @@ import { SpecialistMemory } from "./collaboration/specialist-memory"
 import { ReviewManager } from "./collaboration/review-manager"
 import { CollaborationSession as CollaborationSessionService } from "./collaboration/collaboration-session"
 import { CollaborationEngine as CollaborationEngineService } from "./collaboration/collaboration-engine"
-import { CollaborationMetricsAggregator } from "./collaboration/collaboration-metrics"
+import * as CollaborationMetricsAggregator from "./collaboration/collaboration-metrics"
 
 export interface PhaseEntry {
   readonly phase: string

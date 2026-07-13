@@ -3,21 +3,21 @@
     <picture>
       <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
       <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="Opencode-Nexus logo">
+      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="OpenCode Nexus logo">
     </picture>
   </a>
 </p>
-<p align="center">The open source AI coding agent — extended with an intelligent orchestration engine.</p>
+<p align="center">The AI coding agent with intelligent task orchestration.</p>
 <p align="center">
-  <a href="https://github.com/Tshenolojay/Opencode-Nexus">Opencode-Nexus</a> is a fork of
-  <a href="https://github.com/anomalyco/opencode">OpenCode</a> with a task-level orchestration layer.
+  <a href="https://github.com/Tshenolojay/Opencode-Nexus">OpenCode Nexus</a> is a
+  <a href="https://github.com/anomalyco/opencode">OpenCode</a> fork enhanced with a task-level orchestration layer.
 </p>
 
 ---
 
-## What is Opencode-Nexus?
+## What is OpenCode Nexus?
 
-Opencode-Nexus is **OpenCode** (the open source AI coding agent) plus the **Orchestration Engine** — an intelligent layer that sits in front of task execution and decides *how* a task should be done before any agent runs.
+OpenCode Nexus is an AI development platform built on [OpenCode](https://github.com/anomalyco/opencode) and extended with an **Orchestration Engine** — an intelligent layer that decides *how* a task should be done before any agent runs.
 
 For every prompt it:
 
@@ -30,8 +30,6 @@ This lets complex work route itself to the right agents and models automatically
 
 ## Installation
 
-Opencode-Nexus is built from this repository (it is a fork of OpenCode, so it shares OpenCode's tooling).
-
 ```bash
 # Prerequisites: Bun (https://bun.sh) and Node 20+
 git clone https://github.com/Tshenolojay/Opencode-Nexus.git
@@ -40,25 +38,23 @@ bun install
 bun turbo build
 
 # Run the agent from a project directory
-bun run --cwd packages/opencode opencode
+bun run --cwd packages/opencode opencode-nexus
 ```
 
-Upstream OpenCode install methods (`brew`, `npm i -g opencode-ai`, etc.) install the base agent without the orchestration engine — use the build above to get the fork.
+OpenCode Nexus is built from this repository and includes the orchestration engine compiled into every binary. Upstream OpenCode install methods (`brew`, `npm i -g opencode-ai`, etc.) install the base agent without orchestration — use the build above for the full experience.
 
 > **Tip:** Remove OpenCode versions older than `0.1.x` before installing.
 
 ### Desktop App
 
-OpenCode's desktop app builds are available from the upstream
-[releases page](https://github.com/anomalyco/opencode/releases).
-
-The orchestration engine is a library layer (`@opencode-ai/orchestrator`) that integrates with the agent through its `integration` surfaces (`ExecutionPackage`, `AgentContext`, `PromptAugmentation`, `AgentAdapter`) — see [Orchestration Engine](#orchestration-engine).
+Desktop builds are available from the
+[releases page](https://github.com/Tshenolojay/Opencode-Nexus/releases).
 
 ## Orchestration Engine
 
 The engine lives in **`packages/orchestrator`** (`@opencode-ai/orchestrator`) and is described as:
 
-> *Intelligent orchestration layer for OpenCode — task classification, confidence estimation, agent dispatch, and prompt augmentation.*
+> *Intelligent orchestration layer for OpenCode Nexus — task classification, confidence estimation, agent dispatch, and prompt augmentation.*
 
 ### The `orchestrate` flow
 
@@ -116,7 +112,7 @@ The engine is designed to plug into the agent rather than replace it. Key integr
 
 ## Agents
 
-OpenCode includes two built-in agents you can switch between with the `Tab` key:
+OpenCode Nexus includes two built-in agents you can switch between with the `Tab` key:
 
 - **build** — Default, full-access agent for development work.
 - **plan** — Read-only agent for analysis and code exploration (denies edits, asks before bash).
@@ -127,7 +123,7 @@ Learn more in the [OpenCode agent docs](https://opencode.ai/docs/agents).
 
 ## Documentation
 
-Core OpenCode documentation: [opencode.ai/docs](https://opencode.ai/docs).
+Core documentation: [opencode.ai/docs](https://opencode.ai/docs).
 For contributing, read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request.
 
 ## Status

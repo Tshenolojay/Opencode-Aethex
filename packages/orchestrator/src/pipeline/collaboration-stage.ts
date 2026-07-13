@@ -2,7 +2,7 @@ import { Effect } from "effect"
 import type { PipelineState } from "./pipeline"
 import { CollaborationEngine } from "../collaboration/collaboration-engine"
 import { CollaborationSession as CollaborationSessionService } from "../collaboration/collaboration-session"
-import { CollaborationMetricsAggregator } from "../collaboration/collaboration-metrics"
+import * as CollaborationMetricsAggregator from "../collaboration/collaboration-metrics"
 
 export const runCollaborationStage = Effect.fn("Pipeline.collaboration")(function* (state: PipelineState) {
   const startTime = Date.now()
