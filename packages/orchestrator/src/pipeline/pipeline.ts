@@ -9,6 +9,7 @@ import type { TimingInfo } from "../types/metadata"
 type TaskClassification = Schema.Schema.Type<typeof TaskClassificationSchema>
 import { runFoundationStage } from "./foundation-stage"
 import { runPlanningStage } from "./planning-stage"
+import { runResourceStage } from "./resource-stage"
 import { runExecutionStage } from "./execution-stage"
 import { runIntelligenceStage } from "./intelligence-stage"
 import { runIntegrationStage } from "./integration-stage"
@@ -147,6 +148,7 @@ export function createInitialState(input: OrchestrationInput): PipelineState {
       moduleCatalog: undefined,
       intelligenceReport: undefined,
       collaboration: undefined,
+      routingMetadata: undefined,
     },
 
     virtualTeam: undefined,
@@ -164,6 +166,7 @@ export type StageFn = (state: PipelineState) => Effect.Effect<PipelineState>
 const stages: StageFn[] = [
   runFoundationStage as StageFn,
   runPlanningStage as StageFn,
+  runResourceStage as StageFn,
   runExecutionStage as StageFn,
   runIntelligenceStage as StageFn,
   runIntegrationStage as StageFn,

@@ -13,6 +13,13 @@ export interface SpecialistMatch {
   readonly specialist: SpecialistProfile
   readonly matchScore: number
   readonly matchedCapabilities: readonly Capability[]
+  readonly optionalCapabilities?: readonly string[] | undefined
+  readonly minimumCapabilities?: readonly string[] | undefined
+  readonly preferredCapabilities?: readonly string[] | undefined
+  readonly preferredModelFamilies?: readonly string[] | undefined
+  readonly preferredRoutingPolicy?: string | undefined
+  readonly preferredRepositorySize?: "tiny" | "small" | "medium" | "large" | "huge" | undefined
+  readonly preferredContextSize?: number | undefined
 }
 
 export interface FilterOptions {
@@ -38,19 +45,30 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/or
 function scoreSpecialist(specialist: SpecialistProfile, capabilities: readonly Capability[]): SpecialistMatch | undefined {
   if (specialist.requiredCapabilities.length === 0) return undefined
 
-  const matched: Capability[] = []
-  for (const cap of capabilities) {
-    if (specialist.requiredCapabilities.includes(cap)) {
-      matched.push(cap)
-    }
-  }
+  const capSet = new Set<string>(capabilities as readonly string[])
+  const matched = specialist.requiredCapabilities.filter((c) => capSet.has(c))
 
   if (matched.length === 0) return undefined
 
+  const optionalMatched = (specialist.optionalCapabilities ?? []).filter((c) => capSet.has(c))
+  const preferredMatched = (specialist.preferredCapabilities ?? []).filter((c) => capSet.has(c))
+  const minimumMatched = (specialist.minimumCapabilities ?? []).filter((c) => capSet.has(c))
+
+  const optionalBonus = specialist.optionalCapabilities && specialist.optionalCapabilities.length > 0
+    ? (optionalMatched.length / specialist.optionalCapabilities.length) * 0.1
+    : 0
+
   return {
     specialist,
-    matchScore: matched.length / specialist.requiredCapabilities.length,
-    matchedCapabilities: matched,
+    matchScore: matched.length / specialist.requiredCapabilities.length + optionalBonus,
+    matchedCapabilities: matched as readonly Capability[],
+    optionalCapabilities: optionalMatched,
+    minimumCapabilities: minimumMatched,
+    preferredCapabilities: preferredMatched,
+    preferredModelFamilies: specialist.preferredModelFamilies,
+    preferredRoutingPolicy: specialist.preferredRoutingPolicy,
+    preferredRepositorySize: specialist.preferredRepositorySize,
+    preferredContextSize: specialist.preferredContextSize,
   }
 }
 

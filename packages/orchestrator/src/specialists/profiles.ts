@@ -113,6 +113,11 @@ export interface SpecialistProfile {
   readonly primaryCapabilities?: readonly string[]
   readonly minimumCapabilities?: readonly string[]
   readonly collaborationRules?: readonly string[]
+  readonly preferredModelFamilies?: readonly string[]
+  readonly preferredRoutingPolicy?: string
+  readonly preferredRepositorySize?: "tiny" | "small" | "medium" | "large" | "huge"
+  readonly preferredContextSize?: number
+  readonly minimumQualityScore?: number
   readonly validationRules: readonly string[] | undefined
   readonly metrics: readonly string[] | undefined
   readonly diagnostics: readonly string[] | undefined

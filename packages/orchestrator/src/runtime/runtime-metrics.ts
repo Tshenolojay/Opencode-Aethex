@@ -108,6 +108,15 @@ export interface ExtendedMetrics {
   readonly collaborationReviewCount: number
   readonly collaborationKnowledgeExchangeCount: number
   readonly collaborationEfficiency: number
+  readonly resourceSelectionCount: number
+  readonly resourceSelectionTimeMs: number
+  readonly resourceSelectionFailures: number
+  readonly resourceFallbackActivations: number
+  readonly resourceProviderHealthChecks: number
+  readonly resourceBenchmarkRecords: number
+  readonly resourcePreferenceUpdates: number
+  readonly resourceCapabilityMatches: number
+  readonly resourceRoutingPolicyEvaluations: number
 }
 
 export interface Interface {
@@ -207,6 +216,14 @@ export interface Interface {
   readonly recordCollaborationReview: () => Effect.Effect<void>
   readonly recordCollaborationKnowledgeExchange: () => Effect.Effect<void>
   readonly recordCollaborationEfficiency: (rate: number) => Effect.Effect<void>
+  readonly recordResourceSelection: (ms: number) => Effect.Effect<void>
+  readonly recordResourceSelectionFailure: () => Effect.Effect<void>
+  readonly recordResourceFallbackActivation: () => Effect.Effect<void>
+  readonly recordResourceProviderHealthCheck: () => Effect.Effect<void>
+  readonly recordResourceBenchmarkRecord: () => Effect.Effect<void>
+  readonly recordResourcePreferenceUpdate: () => Effect.Effect<void>
+  readonly recordResourceCapabilityMatch: () => Effect.Effect<void>
+  readonly recordResourceRoutingPolicyEvaluation: () => Effect.Effect<void>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/orchestrator/RuntimeMetrics") {}
@@ -320,6 +337,15 @@ function zeroExtended(): ExtendedMetrics {
     collaborationReviewCount: 0,
     collaborationKnowledgeExchangeCount: 0,
     collaborationEfficiency: 0,
+    resourceSelectionCount: 0,
+    resourceSelectionTimeMs: 0,
+    resourceSelectionFailures: 0,
+    resourceFallbackActivations: 0,
+    resourceProviderHealthChecks: 0,
+    resourceBenchmarkRecords: 0,
+    resourcePreferenceUpdates: 0,
+    resourceCapabilityMatches: 0,
+    resourceRoutingPolicyEvaluations: 0,
   }
 }
 
@@ -708,6 +734,42 @@ const layer = Layer.effect(
       yield* Ref.update(extended, (m) => ({ ...m, collaborationEfficiency: rate }))
     })
 
+    const recordResourceSelection = Effect.fn("RuntimeMetrics.recordResourceSelection")(function* (ms: number) {
+      yield* Ref.update(extended, (m) => ({
+        ...m,
+        resourceSelectionCount: m.resourceSelectionCount + 1,
+        resourceSelectionTimeMs: m.resourceSelectionTimeMs + ms,
+      }))
+    })
+
+    const recordResourceSelectionFailure = Effect.fn("RuntimeMetrics.recordResourceSelectionFailure")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, resourceSelectionFailures: m.resourceSelectionFailures + 1 }))
+    })
+
+    const recordResourceFallbackActivation = Effect.fn("RuntimeMetrics.recordResourceFallbackActivation")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, resourceFallbackActivations: m.resourceFallbackActivations + 1 }))
+    })
+
+    const recordResourceProviderHealthCheck = Effect.fn("RuntimeMetrics.recordResourceProviderHealthCheck")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, resourceProviderHealthChecks: m.resourceProviderHealthChecks + 1 }))
+    })
+
+    const recordResourceBenchmarkRecord = Effect.fn("RuntimeMetrics.recordResourceBenchmarkRecord")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, resourceBenchmarkRecords: m.resourceBenchmarkRecords + 1 }))
+    })
+
+    const recordResourcePreferenceUpdate = Effect.fn("RuntimeMetrics.recordResourcePreferenceUpdate")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, resourcePreferenceUpdates: m.resourcePreferenceUpdates + 1 }))
+    })
+
+    const recordResourceCapabilityMatch = Effect.fn("RuntimeMetrics.recordResourceCapabilityMatch")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, resourceCapabilityMatches: m.resourceCapabilityMatches + 1 }))
+    })
+
+    const recordResourceRoutingPolicyEvaluation = Effect.fn("RuntimeMetrics.recordResourceRoutingPolicyEvaluation")(function* () {
+      yield* Ref.update(extended, (m) => ({ ...m, resourceRoutingPolicyEvaluations: m.resourceRoutingPolicyEvaluations + 1 }))
+    })
+
     const recordDomainAnalysis = Effect.fn("RuntimeMetrics.recordDomainAnalysis")(function* () {
       yield* Ref.update(extended, (m) => ({ ...m, domainAnalysisCount: m.domainAnalysisCount + 1 }))
     })
@@ -783,6 +845,9 @@ const layer = Layer.effect(
       recordSummaryGeneration, recordMemoryReuse,
       recordCollaborationRound, recordCollaborationConflict, recordCollaborationReview,
       recordCollaborationKnowledgeExchange, recordCollaborationEfficiency,
+      recordResourceSelection, recordResourceSelectionFailure, recordResourceFallbackActivation,
+      recordResourceProviderHealthCheck, recordResourceBenchmarkRecord, recordResourcePreferenceUpdate,
+      recordResourceCapabilityMatch, recordResourceRoutingPolicyEvaluation,
       getExtended,
     })
   }),

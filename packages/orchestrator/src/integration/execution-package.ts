@@ -359,6 +359,28 @@ import type { ApplicationProfile } from "../application/application-profile"
 import type { ApplicationSummary, WorkflowCatalog, CapabilityCatalog, ServiceCatalog, ModuleCatalog, IntelligenceReport } from "../application/application-intelligence"
 import type { CollaborationResult } from "./collaboration-result"
 
+export interface RoutingMetadata {
+  readonly selectedProviderID: string | undefined
+  readonly selectedModelID: string | undefined
+  readonly fallbackProviderID: string | undefined
+  readonly fallbackModelID: string | undefined
+  readonly tertiaryProviderID: string | undefined
+  readonly tertiaryModelID: string | undefined
+  readonly routingStrategy: string | undefined
+  readonly routingPolicy: string | undefined
+  readonly selectionConfidence: number | undefined
+  readonly selectionReasoning: readonly string[] | undefined
+  readonly capabilityFitScore: number | undefined
+  readonly estimatedCostPerToken: number | undefined
+  readonly estimatedCost: number | undefined
+  readonly estimatedContext: number | undefined
+  readonly estimatedTokens: number | undefined
+  readonly estimatedLatencyMs: number | undefined
+  readonly providerHealthScore: number | undefined
+  readonly providerHealthSnapshot: Readonly<Record<string, unknown>> | undefined
+  readonly benchmarkSummary: Readonly<Record<string, unknown>> | undefined
+}
+
 export interface ExecutionPackage {
   readonly sessionID: string
   readonly timestamp: number
@@ -431,6 +453,8 @@ export interface ExecutionPackage {
   readonly intelligenceReport: IntelligenceReport | undefined
 
   readonly collaboration: CollaborationResult | undefined
+
+  readonly routingMetadata: RoutingMetadata | undefined
 }
 
 export function empty(sessionID: string): ExecutionPackage {
@@ -519,5 +543,6 @@ export function empty(sessionID: string): ExecutionPackage {
     moduleCatalog: undefined,
     intelligenceReport: undefined,
     collaboration: undefined,
+    routingMetadata: undefined,
   }
 }

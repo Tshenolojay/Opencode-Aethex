@@ -877,6 +877,108 @@ export const ApplicationKnowledgeReused = Event.define({
   },
 })
 
+export const ResourceSelectionCompleted = Event.define({
+  type: "orchestrator.resource-selection-completed",
+  schema: {
+    sessionID: Schema.String,
+    selectedProviderID: Schema.String,
+    selectedModelID: Schema.String,
+    routingStrategy: Schema.String,
+    selectionConfidence: Schema.Finite,
+    candidateCount: Schema.Finite,
+  },
+})
+
+export const ResourceSelectionFailed = Event.define({
+  type: "orchestrator.resource-selection-failed",
+  schema: {
+    sessionID: Schema.String,
+    error: Schema.String,
+    requiredCapabilities: Schema.Array(Schema.String),
+  },
+})
+
+export const FallbackTriggered = Event.define({
+  type: "orchestrator.fallback-triggered",
+  schema: {
+    sessionID: Schema.String,
+    fromProviderID: Schema.String,
+    fromModelID: Schema.String,
+    toProviderID: Schema.String,
+    toModelID: Schema.String,
+    reason: Schema.String,
+  },
+})
+
+export const ProviderHealthRecorded = Event.define({
+  type: "orchestrator.provider-health-recorded",
+  schema: {
+    sessionID: Schema.String,
+    providerID: Schema.String,
+    healthScore: Schema.Finite,
+    available: Schema.Boolean,
+  },
+})
+
+export const ProviderSelected = Event.define({
+  type: "orchestrator.provider-selected",
+  schema: {
+    sessionID: Schema.String,
+    providerID: Schema.String,
+    modelID: Schema.String,
+    routingStrategy: Schema.String,
+  },
+})
+
+export const ProviderUnavailable = Event.define({
+  type: "orchestrator.provider-unavailable",
+  schema: {
+    sessionID: Schema.String,
+    providerID: Schema.String,
+    reason: Schema.String,
+  },
+})
+
+export const ModelRejected = Event.define({
+  type: "orchestrator.model-rejected",
+  schema: {
+    sessionID: Schema.String,
+    providerID: Schema.String,
+    modelID: Schema.String,
+    reason: Schema.String,
+  },
+})
+
+export const BenchmarkUpdated = Event.define({
+  type: "orchestrator.benchmark-updated",
+  schema: {
+    sessionID: Schema.String,
+    providerID: Schema.String,
+    modelID: Schema.String,
+    capability: Schema.String,
+    score: Schema.Finite,
+  },
+})
+
+export const PreferenceChanged = Event.define({
+  type: "orchestrator.preference-changed",
+  schema: {
+    sessionID: Schema.String,
+    category: Schema.String,
+    key: Schema.String,
+    value: Schema.String,
+  },
+})
+
+export const CatalogUpdated = Event.define({
+  type: "orchestrator.catalog-updated",
+  schema: {
+    sessionID: Schema.String,
+    providerCount: Schema.Finite,
+    modelCount: Schema.Finite,
+  },
+})
+
 import {
   RuntimeStarted,
   RuntimeCompleted,
@@ -1101,4 +1203,14 @@ export const Definitions = [
   OrganizationAnalyzed,
   ApplicationSummaryBuilt,
   ApplicationKnowledgeReused,
+  ResourceSelectionCompleted,
+  ResourceSelectionFailed,
+  FallbackTriggered,
+  ProviderHealthRecorded,
+  ProviderSelected,
+  ProviderUnavailable,
+  ModelRejected,
+  BenchmarkUpdated,
+  PreferenceChanged,
+  CatalogUpdated,
 ] as const

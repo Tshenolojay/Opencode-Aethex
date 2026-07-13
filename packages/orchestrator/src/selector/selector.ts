@@ -3,16 +3,12 @@ export * as ModelSelector from "./selector"
 import { Context, Effect, Layer } from "effect"
 import type { Capability, CapabilityProfile, CapabilityRequirement } from "../types/capability"
 import type { TaskType } from "../types/classification"
-import { ModelRanking } from "../model/model-ranking"
-import { SelectionPolicies } from "../model/selection-policies"
-import { CapabilityRegistry } from "../model/capability-registry"
 import type { RankedModel } from "../model/model-ranking"
 import type { SelectionPolicy } from "../model/selection-policies"
-import { ModelHealth } from "../model/model-health"
-import { CostEstimator } from "../model/cost-estimator"
-import { LatencyEstimator } from "../model/latency-estimator"
-import { FallbackStrategy } from "../model/fallback-strategy"
-import { ExecutionStrategy } from "../model/execution-strategy"
+import { SelectionPolicies } from "../model/selection-policies"
+import { CapabilityRegistry } from "../model/capability-registry"
+import { SelectionEngine } from "../resources/selection-engine"
+import type { ModelSelection as ResourceSelection } from "../resources/selection-engine"
 
 export interface ModelSelection {
   readonly providerID: string
@@ -142,197 +138,132 @@ function taskTypeToCapabilities(taskType: TaskType, complexity: number): Capabil
   return base
 }
 
-function scoreModel(
-  model: AvailableModel,
-  requirements: readonly CapabilityRequirement[],
-): { matched: Capability[]; missing: Capability[]; score: number } {
-  const matched: Capability[] = []
-  const missing: Capability[] = []
-  let totalScore = 0
-  let totalWeight = 0
-
-  for (const req of requirements) {
-    if (model.capabilities.includes(req.capability)) {
-      matched.push(req.capability)
-      totalScore += req.weight * (req.optional ? 0.5 : 1.0)
-    } else {
-      missing.push(req.capability)
-    }
-    totalWeight += req.weight
-  }
-
-  const matchScore = totalWeight > 0 ? totalScore / totalWeight : 0
-  return { matched, missing, score: matchScore }
-}
-
 const estimateCapabilities: Interface["estimateCapabilities"] = Effect.fn("ModelSelector.estimateCapabilities")(function* (input) {
   const capRegistry = yield* CapabilityRegistry.Service
   const requirements = taskTypeToCapabilities(input.taskType, input.complexity)
 
   let reason: string
   switch (input.taskType) {
-    case "bug-fix": reason = "Bug fixing requires strong reasoning and code analysis" ; break
-    case "debugging": reason = "Debugging requires analytical reasoning and search" ; break
-    case "code-generation": reason = "Code generation requires code-capable model" ; break
-    case "architecture-design": reason = "Architecture design requires planning and reasoning" ; break
-    case "repository-search": reason = "Repository search requires search and code understanding" ; break
-    case "testing": reason = "Testing requires code generation and analysis" ; break
-    case "refactoring": reason = "Refactoring requires code analysis and reasoning" ; break
-    case "performance-optimisation": reason = "Performance requires deep analysis and reasoning" ; break
-    case "security-review": reason = "Security review requires analysis and reasoning" ; break
-    case "dependency-investigation": reason = "Dependency investigation requires search and analysis" ; break
-    case "documentation": reason = "Documentation benefits from analysis capability" ; break
-    default: reason = "General task with minimal capability requirements" ; break
+    case "bug-fix": reason = "Bug fixing requires strong reasoning and code analysis"; break
+    case "debugging": reason = "Debugging requires analytical reasoning and search"; break
+    case "code-generation": reason = "Code generation requires code-capable model"; break
+    case "architecture-design": reason = "Architecture design requires planning and reasoning"; break
+    case "repository-search": reason = "Repository search requires search and code understanding"; break
+    case "testing": reason = "Testing requires code generation and analysis"; break
+    case "refactoring": reason = "Refactoring requires code analysis and reasoning"; break
+    case "performance-optimisation": reason = "Performance requires deep analysis and reasoning"; break
+    case "security-review": reason = "Security review requires analysis and reasoning"; break
+    case "dependency-investigation": reason = "Dependency investigation requires search and analysis"; break
+    case "documentation": reason = "Documentation benefits from analysis capability"; break
+    default: reason = "General task with minimal capability requirements"; break
   }
 
   return { requirements, recommendedCount: requirements.filter((r) => !r.optional).length, reason } as CapabilityProfile
 }) as unknown as Interface["estimateCapabilities"]
 
-const select: Interface["select"] = Effect.fn("ModelSelector.select")(function* (input) {
-  const { requiredCapabilities, availableModels } = input
+const toModelSelection = (sel: ResourceSelection | undefined): ModelSelection | undefined => {
+  if (!sel) return undefined
+  return {
+    providerID: sel.providerID,
+    modelID: sel.modelID,
+    capabilities: sel.requirements.requiredCapabilities as Capability[],
+    reason: sel.reasoning.join("; "),
+    matchScore: sel.confidence,
+  }
+}
 
-  if (requiredCapabilities.length === 0) {
-    if (availableModels.length === 0) return undefined
+const select: Interface["select"] = Effect.fn("ModelSelector.select")(function* (input) {
+  if (input.requiredCapabilities.length === 0) {
+    if (input.availableModels.length === 0) return undefined
+    const first = input.availableModels[0]
     return {
-      providerID: availableModels[0].providerID,
-      modelID: availableModels[0].modelID,
-      capabilities: availableModels[0].capabilities,
-      reason: "no specific capabilities required; using first available",
+      providerID: first.providerID,
+      modelID: first.modelID,
+      capabilities: first.capabilities,
+      reason: "delegated to SelectionEngine (no specific capabilities required)",
       matchScore: 1,
     }
   }
 
-  const requirements: CapabilityRequirement[] = requiredCapabilities.map((c) => ({
-    capability: c, weight: 1, optional: false,
-  }))
-
-  const candidates = availableModels
-    .map((m) => ({ model: m, ...scoreModel(m, requirements) }))
-    .sort((a, b) => b.score - a.score || b.model.priority - a.model.priority)
-
-  if (candidates.length === 0) return undefined
-
-  const best = candidates[0].score > 0 ? candidates[0] : undefined
-  if (!best) return undefined
-
+  const engine = yield* SelectionEngine.Service
+  const selection = yield* engine.selectForTask(input.requiredCapabilities)
+  if (!selection) return undefined
   return {
-    providerID: best.model.providerID,
-    modelID: best.model.modelID,
-    capabilities: best.model.capabilities,
-    reason: best.matched.length === requirements.length
-      ? "full capability match"
-      : `partial match (${best.matched.length}/${requirements.length})`,
-    matchScore: best.score,
+    providerID: selection.providerID,
+    modelID: selection.modelID,
+    capabilities: input.requiredCapabilities,
+    reason: selection.reasoning.join("; "),
+    matchScore: selection.confidence,
   }
-})
+}) as unknown as Interface["select"]
 
 const evaluate: Interface["evaluate"] = Effect.fn("ModelSelector.evaluate")(function* (input) {
-  const requirements: CapabilityRequirement[] = input.requiredCapabilities.map((c) => ({
-    capability: c, weight: 1, optional: false,
-  }))
-
-  const scoredCandidates: ScoredCandidate[] = input.availableModels.map((m) => {
-    const { matched, missing, score } = scoreModel(m, requirements)
+  const selection = yield* select(input)
+  const candidates: ScoredCandidate[] = input.availableModels.map((m) => {
+    const matched = m.capabilities.filter((c) => input.requiredCapabilities.includes(c))
+    const missing = input.requiredCapabilities.filter((c) => !m.capabilities.includes(c))
     return {
       providerID: m.providerID,
       modelID: m.modelID,
       capabilities: m.capabilities,
-      matchScore: score,
+      matchScore: input.requiredCapabilities.length > 0 ? matched.length / input.requiredCapabilities.length : 1,
       matchedCapabilities: matched,
       missingCapabilities: missing,
     }
   }).sort((a, b) => b.matchScore - a.matchScore)
 
-  const selection = scoredCandidates.length > 0 && scoredCandidates[0].matchScore > 0
-    ? {
-        providerID: scoredCandidates[0].providerID,
-        modelID: scoredCandidates[0].modelID,
-        capabilities: scoredCandidates[0].capabilities,
-        reason: scoredCandidates[0].missingCapabilities.length === 0
-          ? "full capability match"
-          : `best partial match (${scoredCandidates[0].matchedCapabilities.length}/${requirements.length})`,
-        matchScore: scoredCandidates[0].matchScore,
-      }
-    : undefined
-
-  return { selection, candidates: scoredCandidates }
+  return { selection, candidates }
 })
 
 const selectWithFallback: Interface["selectWithFallback"] = Effect.fn("ModelSelector.selectWithFallback")(function* (input: Input, policyName: string | undefined) {
-  const modelRanking = yield* ModelRanking.Service
   const policies = yield* SelectionPolicies.Service
-
   const policy = (policyName ? policies.getPolicy(policyName) ?? SelectionPolicies.DEFAULT_POLICY : SelectionPolicies.DEFAULT_POLICY) as SelectionPolicy
-  const requirements: CapabilityRequirement[] = input.requiredCapabilities.map((c: Capability) => ({
-    capability: c, weight: 1, optional: false,
-  }))
+  const engine = yield* SelectionEngine.Service
+  const selection = yield* engine.selectForTask(input.requiredCapabilities, policy.modelStrategy as never)
+  if (!selection) return undefined
+  const chain = selection.fallbackChain
 
-  const { adjustedRequirements } = policies.applyPolicy(requirements, policy)
-  const result = yield* modelRanking.rank(adjustedRequirements, policy.modelStrategy)
-
-  const toSelection = (r: RankedModel | undefined): ModelSelection | undefined => {
-    if (!r) return undefined
-    return {
-      providerID: r.model.providerID,
-      modelID: r.model.modelID,
-      capabilities: r.model.capabilities,
-      reason: r.reasoning.join("; "),
-      matchScore: r.rankScore,
-    }
-  }
+  const secondary = chain.secondary
+    ? [{
+        providerID: chain.secondary.providerID,
+        modelID: chain.secondary.modelID,
+        capabilities: input.requiredCapabilities,
+        reason: chain.reasoning,
+        matchScore: chain.secondary.totalScore,
+      }]
+    : []
+  const fallback = chain.tertiary
+    ? {
+        providerID: chain.tertiary.providerID,
+        modelID: chain.tertiary.modelID,
+        capabilities: input.requiredCapabilities,
+        reason: chain.reasoning,
+        matchScore: chain.tertiary.totalScore,
+      }
+    : undefined
 
   return {
-    primary: toSelection(result.primary),
-    secondary: result.secondary.map(toSelection).filter((s): s is ModelSelection => s !== undefined),
-    fallback: toSelection(result.fallback),
-    emergencyFallback: toSelection(result.emergencyFallback),
-    equivalents: result.equivalents.map(toSelection).filter((s): s is ModelSelection => s !== undefined),
+    primary: toModelSelection(selection),
+    secondary,
+    fallback,
+    emergencyFallback: undefined,
+    equivalents: [],
     policy: policy.name,
     strategy: policy.modelStrategy,
   } as RichSelection
 }) as unknown as Interface["selectWithFallback"]
 
-const selectWeighted: Interface["selectWeighted"] = Effect.fn("ModelSelector.selectWeighted")(function* (input: Input, options: { readonly healthWeight?: number; readonly costWeight?: number; readonly latencyWeight?: number; readonly capabilityWeight?: number } = {}) {
-  const {
-    healthWeight = 0.2,
-    costWeight = 0.15,
-    latencyWeight = 0.15,
-    capabilityWeight = 0.5,
-  } = options
-
-  const modelHealth = yield* ModelHealth.Service
-  const costEstimator = yield* CostEstimator.Service
-  const latencyEstimator = yield* LatencyEstimator.Service
-
-  const requirements: CapabilityRequirement[] = input.requiredCapabilities.map((c: Capability) => ({
-    capability: c, weight: 1, optional: false,
-  }))
-
-  const scored: Array<AvailableModel & { totalScore: number; capScore: number; healthScore: number; costScore: number; latencyScore: number; matched: Capability[]; missing: Capability[] }> = yield* Effect.all(input.availableModels.map((m: AvailableModel) =>
-    Effect.gen(function* () {
-      const { matched, missing, score: capScore } = scoreModel(m, requirements)
-      const health = yield* modelHealth.getHealth(m.providerID, m.modelID)
-      const healthScore = health?.healthScore ?? 1
-      const cost = yield* costEstimator.estimateCost(m.providerID, m.modelID, 1000, 500)
-      const costScore = cost ? Math.max(0, 1 - cost.estimatedTotalCost / 0.1) : 0.5
-      const latency = yield* latencyEstimator.estimateLatency(m.providerID, m.modelID)
-      const latencyScore = latency ? Math.max(0, 1 - latency.estimatedTotalLatencyMs / 10000) : 0.5
-
-      const totalScore = (capScore * capabilityWeight) + (healthScore * healthWeight) + (costScore * costWeight) + (latencyScore * latencyWeight)
-      return { ...m, totalScore, capScore, healthScore, costScore, latencyScore, matched, missing }
-    }),
-  ))
-
-  const best = scored.sort((a, b) => b.totalScore - a.totalScore)[0]
-  if (!best || best.totalScore <= 0) return undefined
-
+const selectWeighted: Interface["selectWeighted"] = Effect.fn("ModelSelector.selectWeighted")(function* (input: Input, _options: { readonly healthWeight?: number; readonly costWeight?: number; readonly latencyWeight?: number; readonly capabilityWeight?: number } = {}) {
+  const engine = yield* SelectionEngine.Service
+  const selection = yield* engine.selectForTask(input.requiredCapabilities)
+  if (!selection) return undefined
   return {
-    providerID: best.providerID,
-    modelID: best.modelID,
-    capabilities: best.capabilities,
-    reason: `weighted selection (cap=${(best.capScore * capabilityWeight).toFixed(2)}, health=${(best.healthScore * healthWeight).toFixed(2)}, cost=${(best.costScore * costWeight).toFixed(2)}, latency=${(best.latencyScore * latencyWeight).toFixed(2)})`,
-    matchScore: best.totalScore,
-  } as ModelSelection
+    providerID: selection.providerID,
+    modelID: selection.modelID,
+    capabilities: input.requiredCapabilities,
+    reason: selection.reasoning.join("; "),
+    matchScore: selection.confidence,
+  }
 }) as unknown as Interface["selectWeighted"]
 
 const layer = Layer.effect(

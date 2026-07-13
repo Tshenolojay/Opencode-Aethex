@@ -148,6 +148,16 @@ import { ReviewManager } from "./collaboration/review-manager"
 import { CollaborationSession as CollaborationSessionService } from "./collaboration/collaboration-session"
 import { CollaborationEngine as CollaborationEngineService } from "./collaboration/collaboration-engine"
 import * as CollaborationMetricsAggregator from "./collaboration/collaboration-metrics"
+import { ProviderHealth as ResourceProviderHealth } from "./resources/provider-health"
+import { ProviderAvailability } from "./resources/provider-availability"
+import { BenchmarkStore } from "./resources/benchmark-store"
+import { PerformanceMemory } from "./resources/performance-memory"
+import { PreferenceManager } from "./resources/preference-manager"
+import { ResourceEstimator } from "./resources/resource-estimator"
+import { CapabilityMatcher } from "./resources/capability-matcher"
+import { RoutingPolicy } from "./resources/routing-policy"
+import { FallbackEngine } from "./resources/fallback-engine"
+import { SelectionEngine } from "./resources/selection-engine"
 
 export interface PhaseEntry {
   readonly phase: string
@@ -571,6 +581,16 @@ const layer = Layer.effect(
       CollaborationSessionService.layer,
       CollaborationEngineService.layer,
       CollaborationMetricsAggregator.layer,
+      ResourceProviderHealth.layer,
+      ProviderAvailability.layer,
+      BenchmarkStore.layer,
+      PerformanceMemory.layer,
+      PreferenceManager.layer,
+      ResourceEstimator.layer,
+      CapabilityMatcher.layer,
+      RoutingPolicy.layer,
+      FallbackEngine.layer,
+      SelectionEngine.layer,
     ),
   ),
 )
