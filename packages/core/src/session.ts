@@ -34,7 +34,7 @@ import { SessionEvent } from "./session/event"
 import { SessionInput } from "./session/input"
 import { Snapshot } from "./snapshot"
 import { Flag } from "./flag/flag"
-import { SessionIntegration } from "@opencode-ai/orchestrator"
+import { SessionIntegration, OrchestratorService } from "@opencode-ai/orchestrator"
 import { SessionRevert } from "./session/revert"
 import { Revert } from "@opencode-ai/schema/revert"
 import { FSUtil } from "./fs-util"
@@ -504,7 +504,10 @@ const resolvePrompt = (input: PromptInput.Prompt) =>
 
 export const node = makeGlobalNode({
   service: Service,
-  layer: layer.pipe(Layer.orDie),
+  layer: layer.pipe(
+    Layer.provide(SessionIntegration.layer.pipe(Layer.provide(OrchestratorService.layer))),
+    Layer.orDie,
+  ),
   deps: [
     Database.node,
     EventV2.node,
