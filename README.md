@@ -105,6 +105,8 @@ The engine is organized as composable Effect layers. The major subsystems:
 
 ### Integration points
 
+The engine is wired into the runtime: `packages/core/src/session.ts` provides `SessionIntegration` (and its `OrchestratorService` dependency) onto the global Session node and invokes it on every prompt via `SessionIntegration.integrate`. On **high confidence** the session runs normally (the orchestrator is transparent); on **low confidence** the orchestrator evaluates and produces an `ExecutionPackage`. Set `OPENCODE_DISABLE_ORCHESTRATOR` to bypass the engine entirely.
+
 The engine is designed to plug into the agent rather than replace it. Key integration surfaces (`packages/orchestrator/src/integration`):
 
 - **`ExecutionPackage`** — the structured package describing what should run (capabilities, specialists, knowledge requirements).
