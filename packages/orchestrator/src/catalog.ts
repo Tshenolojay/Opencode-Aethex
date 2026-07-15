@@ -1,6 +1,6 @@
 export * as Catalog from "./catalog"
 
-import { Context, Effect } from "effect"
+import { Context, Effect, Layer } from "effect"
 
 export interface ModelData {
   readonly id: string
@@ -36,3 +36,38 @@ export interface Interface {
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/v2/Catalog") {}
+
+const layer = Layer.effect(
+  Service,
+  Effect.gen(function* () {
+    let providers: ProviderData[] = []
+    let models: ModelData[] = []
+    let defaultModel: ModelData | undefined
+
+    const update = (fn: (draft: { readonly providers: ProviderData[]; readonly models: ModelData[]; readonly defaultModel: ModelData | undefined }) => void) => {
+      const draft = { providers, models, defaultModel }
+      fn(draft)
+      providers = draft.providers
+      models = draft.models
+      defaultModel = draft.defaultModel
+    }
+
+    return Service.of({
+      provider: {
+        get: (id) => Effect.succeed(providers.find((p) => p.id === id)),
+        all: () => Effect.succeed(providers),
+        available: () => Effect.succeed(providers.filter((p) => !p.disabled)),
+      },
+      model: {
+        get: (providerID, modelID) => Effect.succeed(models.find((m) => m.providerID === providerID && m.id === modelID)),
+        all: () => Effect.succeed(models),
+        available: () => Effect.succeed(models.filter((m) => m.enabled)),
+        default: () => Effect.succeed(defaultModel),
+        small: (providerID) => Effect.succeed(models.find((m) => m.providerID === providerID && m.limit.context <= 32000)),
+      },
+      update,
+    })
+  }),
+)
+
+export { layer }
