@@ -492,7 +492,7 @@ const layer = Layer.effect(
       TeamWorkspace.layer,
       TeamDiscussionEngine.layer,
       CapabilityMarketplace.layer,
-      TeamCoordinator.layer,
+      TeamCoordinator.layer.pipe(Layer.provideMerge(SpecialistConversation.layer)),
       KnowledgeSourceRegistry.layer,
       RepositoryConnector.layer,
       DocumentationConnector.layer,
