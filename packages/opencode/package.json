@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "version": "1.17.14",
-  "name": "opencode-nexus",
+  "name": "opencode",
   "type": "module",
   "license": "MIT",
   "private": true,

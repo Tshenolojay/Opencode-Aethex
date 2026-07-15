@@ -55,6 +55,9 @@ import { DialogForkFromTimeline } from "./dialog-fork-from-timeline"
 import { DialogSessionRename } from "../../component/dialog-session-rename"
 import { Sidebar } from "./sidebar"
 import { SubagentFooter } from "./subagent-footer.tsx"
+import { Navbar, NAVBAR_HEIGHT } from "./navbar"
+import { LeftSidebar, LEFT_SIDEBAR_WIDTH } from "./left-sidebar"
+import { FileViewer } from "./file-viewer"
 import { filetype } from "../../util/filetype"
 import parsers from "../../parsers-config"
 import { errorMessage } from "../../util/error"
@@ -123,6 +126,7 @@ const sessionBindingCommands = [
   "session.undo",
   "session.redo",
   "session.sidebar.toggle",
+  "session.left_sidebar.toggle",
   "session.toggle.conceal",
   "session.toggle.timestamps",
   "session.toggle.thinking",
@@ -194,6 +198,17 @@ export function Session() {
   const { theme } = useTheme()
   const promptRef = usePromptRef()
   const session = createMemo(() => sync.session.get(route.sessionID))
+  const rootDir = createMemo(
+    () => session()?.directory || project.instance.path().directory || paths.cwd,
+  )
+  const openFile = async (path: string) => {
+    try {
+      const text = await Bun.file(path).text()
+      setFileView({ path, lines: text.split("\n").slice(0, 3000) })
+    } catch {
+      toast.show({ message: `Could not read ${path}`, variant: "error" })
+    }
+  }
   const location = createMemo(() => {
     const current = session()
     return current ? { directory: current.directory, workspaceID: current.workspaceID } : undefined
@@ -248,6 +263,9 @@ export function Session() {
   const dimensions = useTerminalDimensions()
   const [sidebar, setSidebar] = kv.signal<"auto" | "hide">("sidebar", "auto")
   const [sidebarOpen, setSidebarOpen] = createSignal(false)
+  const [leftSidebar, setLeftSidebar] = kv.signal<"auto" | "hide">("left_sidebar", "auto")
+  const [leftSidebarOpen, setLeftSidebarOpen] = createSignal(false)
+  const [fileView, setFileView] = createSignal<{ path: string; lines: string[] } | undefined>()
   const [conceal, setConceal] = createSignal(true)
   const thinking = useThinkingMode()
   const thinkingMode = thinking.mode
@@ -267,8 +285,16 @@ export function Session() {
     if (sidebar() === "auto" && wide()) return true
     return false
   })
+  const leftSidebarVisible = createMemo(() => {
+    if (session()?.parentID) return false
+    if (leftSidebarOpen()) return true
+    if (leftSidebar() === "auto" && wide()) return true
+    return false
+  })
   const showTimestamps = createMemo(() => timestamps() === "show")
-  const contentWidth = createMemo(() => dimensions().width - (sidebarVisible() ? 42 : 0) - 4)
+  const contentWidth = createMemo(
+    () => dimensions().width - (sidebarVisible() ? 42 : 0) - (leftSidebarVisible() ? LEFT_SIDEBAR_WIDTH : 0) - 4,
+  )
   const providers = createMemo(() => Model.index(sync.data.provider))
 
   const scrollAcceleration = createMemo(() => getScrollAcceleration(tuiConfig))
@@ -672,6 +698,19 @@ export function Session() {
           const isVisible = sidebarVisible()
           setSidebar(() => (isVisible ? "hide" : "auto"))
           setSidebarOpen(!isVisible)
+        })
+        dialog.clear()
+      },
+    },
+    {
+      title: leftSidebarVisible() ? "Hide session list" : "Show session list",
+      value: "session.left_sidebar.toggle",
+      category: "Session",
+      run: () => {
+        batch(() => {
+          const isVisible = leftSidebarVisible()
+          setLeftSidebar(() => (isVisible ? "hide" : "auto"))
+          setLeftSidebarOpen(!isVisible)
         })
         dialog.clear()
       },
@@ -1162,7 +1201,39 @@ export function Session() {
           tui: tuiConfig,
         }}
       >
-        <box flexDirection="row" flexGrow={1} minHeight={0}>
+        <box flexDirection="column" flexGrow={1} minHeight={0}>
+          <Navbar sessionID={route.sessionID} />
+          <box flexDirection="row" flexGrow={1} minHeight={0}>
+            <Show when={leftSidebarVisible()}>
+              <Switch>
+                <Match when={wide()}>
+                  <LeftSidebar
+                    sessionID={route.sessionID}
+                    root={rootDir()}
+                    onOpenFile={openFile}
+                    onClose={() => batch(() => { setLeftSidebar(() => "hide"); setLeftSidebarOpen(false) })}
+                  />
+                </Match>
+                <Match when={!wide()}>
+                  <box
+                    position="absolute"
+                    top={NAVBAR_HEIGHT}
+                    left={0}
+                    right={0}
+                    bottom={0}
+                    alignItems="flex-start"
+                    backgroundColor={RGBA.fromInts(0, 0, 0, 70)}
+                  >
+                    <LeftSidebar
+                      sessionID={route.sessionID}
+                      root={rootDir()}
+                      onOpenFile={openFile}
+                      onClose={() => batch(() => { setLeftSidebar(() => "hide"); setLeftSidebarOpen(false) })}
+                    />
+                  </box>
+                </Match>
+              </Switch>
+            </Show>
           <box flexGrow={1} minHeight={0} paddingBottom={1} paddingLeft={2} paddingRight={2} gap={1}>
             <Show when={session()}>
               <scrollbox
@@ -1329,7 +1400,7 @@ export function Session() {
               <Match when={!wide()}>
                 <box
                   position="absolute"
-                  top={0}
+                  top={NAVBAR_HEIGHT}
                   left={0}
                   right={0}
                   bottom={0}
@@ -1341,6 +1412,14 @@ export function Session() {
               </Match>
             </Switch>
           </Show>
+          <Show when={fileView()}>
+            <FileViewer
+              path={fileView()!.path}
+              lines={fileView()!.lines}
+              onClose={() => setFileView(undefined)}
+            />
+          </Show>
+        </box>
         </box>
       </context.Provider>
     </LocationProvider>

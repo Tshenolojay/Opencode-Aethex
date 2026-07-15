@@ -1,4 +1,5 @@
 import path from "path"
+import { existsSync } from "fs"
 import fs from "fs/promises"
 import { xdgData, xdgCache, xdgConfig, xdgState } from "xdg-basedir"
 import os from "os"
@@ -54,16 +55,16 @@ async function copyDirNonOverwriting(src: string, dst: string): Promise<void> {
     const dstPath = path.join(dst, entry.name)
     if (entry.isDirectory()) {
       await copyDirNonOverwriting(srcPath, dstPath)
-    } else if (!fs.existsSync(dstPath)) {
+    } else if (!existsSync(dstPath)) {
       await fs.copyFile(srcPath, dstPath)
     }
   }
 }
 
 async function migrateLegacyConfig() {
-  if (fs.existsSync(Path.config)) return
+  if (existsSync(Path.config)) return
   for (const legacy of legacyConfigDirs) {
-    if (fs.existsSync(legacy)) {
+    if (existsSync(legacy)) {
       await copyDirNonOverwriting(legacy, Path.config)
       break
     }
