@@ -535,7 +535,7 @@ const layer = Layer.effect(
       SpecialistScoreboard.layer,
       SpecialistMemory.layer,
       CollaborationSessionService.layer,
-      CollaborationMetricsAggregator.layer,
+      CollaborationMetricsAggregator.layer.pipe(Layer.provideMerge(RuntimeMetrics.layer)),
       ResourceProviderHealth.layer,
       ProviderAvailability.layer,
       BenchmarkStore.layer,
