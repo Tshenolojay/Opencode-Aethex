@@ -4,6 +4,8 @@ import { Context, Effect, Layer } from "effect"
 import type { OrchestrationInput, OrchestrationDecision } from "./contracts/service"
 import { TaskClassifier } from "./classifier/classifier"
 import { ConfidenceEngine } from "./confidence/confidence"
+import { SpecialistConversation } from "./session/specialist-conversation"
+import { ExecutionBudget } from "./execution/execution-budget"
 import { AgentDispatcher } from "./dispatcher/dispatcher"
 import { ModelSelector } from "./selector/selector"
 import { KnowledgeBundle } from "./knowledge/knowledge"
@@ -479,6 +481,9 @@ const layer = Layer.effect(
       ExecutionAdvisor.layer,
       ContextCompressor.layer,
       RuntimeMetrics.layer,
+      SpecialistConversation.layer,
+      ExecutionBudget.layer,
+      ConfidenceEngine.layer,
       ReasoningMemory.layer,
       SpecialistConsensus.layer,
       ExecutionNarrative.layer,
