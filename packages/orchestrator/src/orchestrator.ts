@@ -609,7 +609,7 @@ const layer = Layer.effect(
           Layer.provideMerge(Layer.mergeAll(SpecialistRegistry.layer, SpecialistScoreboard.layer, SpecialistConversation.layer)),
         ),
         SelectionEngine.layer.pipe(
-          Layer.provideMerge(Layer.mergeAll(CapabilityMatcher.layer, ResourceEstimator.layer, ProviderHealth.layer, ProviderAvailability.layer, BenchmarkStore.layer, PerformanceMemory.layer, PreferenceManager.layer, RoutingPolicy.layer, FallbackEngine.layer, ModelCatalog.layer, ProviderCatalog.layer)),
+          Layer.provideMerge(Layer.mergeAll(CapabilityMatcher.layer, ResourceEstimator.layer, ResourceProviderHealth.layer, ProviderAvailability.layer, BenchmarkStore.layer, PerformanceMemory.layer, PreferenceManager.layer, RoutingPolicy.layer, FallbackEngine.layer, ModelCatalog.layer, ProviderCatalog.layer)),
         ),
       ),
       // --- Tier 2: deps resolved from Tiers 0..1 ---
