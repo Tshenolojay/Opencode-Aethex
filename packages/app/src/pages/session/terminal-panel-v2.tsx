@@ -226,8 +226,7 @@ export function TerminalPanelV2(props: { stacked?: boolean } = {}) {
       <div
         class="absolute inset-0 flex flex-col overflow-hidden"
         classList={{
-          "border-t border-border-weaker-base": opened() && !isDesktop(),
-          "border-t border-border-weaker-base": opened() && stacked() && !newLayout(),
+          "border-t border-border-weaker-base": opened() && (!isDesktop() || (stacked() && !newLayout())),
           "border-l border-border-weaker-base": opened() && isDesktop() && !newLayout(),
           "pointer-events-none": !opened(),
         }}
