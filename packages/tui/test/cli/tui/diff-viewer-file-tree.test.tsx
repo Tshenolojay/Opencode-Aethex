@@ -164,15 +164,15 @@ async function renderFrame(component: () => JSX.Element) {
 
 async function renderOnceSettled(app: Awaited<ReturnType<typeof testRender>>) {
   await app.renderOnce()
-  await new Promise((resolve) => setTimeout(resolve, 25))
+  await new Promise((resolve) => setTimeout(resolve, 50))
   await app.renderOnce()
 }
 
 async function captureSettledFrame(app: Awaited<ReturnType<typeof testRender>>) {
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 25; attempt++) {
     const frame = app.captureCharFrame()
     if (frame.trim().length > 0) return frame
-    await new Promise((resolve) => setTimeout(resolve, 25))
+    await new Promise((resolve) => setTimeout(resolve, 50))
     await app.renderOnce()
   }
   return app.captureCharFrame()

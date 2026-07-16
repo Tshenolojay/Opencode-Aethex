@@ -86,6 +86,7 @@ import * as TuiAudio from "./audio"
 import { win32DisableProcessedInput, win32FlushInputBuffer } from "./terminal-win32"
 import { destroyRenderer } from "./util/renderer"
 import { cliErrorMessage, errorFormat } from "./util/error"
+import { sessionEpilogue } from "./util/presentation"
 
 registerOpencodeSpinner()
 
@@ -228,12 +229,25 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
       )
       yield* Effect.addFinalizer(() => Effect.sync(TuiAudio.dispose))
       const shutdown = yield* Deferred.make<unknown>()
-      const onSighup = () => destroyRenderer(renderer)
+      let shutdownRequested = false
+      let currentSessionSnapshot: { readonly title: string; readonly id: string } | undefined
+      const requestShutdown = () => {
+        if (shutdownRequested) return
+        shutdownRequested = true
+        if (currentSessionSnapshot && !isDefaultTitle(currentSessionSnapshot.title)) {
+          exit.epilogue = sessionEpilogue({
+            title: currentSessionSnapshot.title,
+            sessionID: currentSessionSnapshot.id,
+          })
+        }
+        if (!renderer.isDestroyed) destroyRenderer(renderer)
+        queueMicrotask(() => Deferred.doneUnsafe(shutdown, Effect.void))
+      }
       yield* Effect.acquireRelease(
-        Effect.sync(() => process.on("SIGHUP", onSighup)),
-        () => Effect.sync(() => process.off("SIGHUP", onSighup)),
+        Effect.sync(() => process.on("SIGHUP", requestShutdown)),
+        () => Effect.sync(() => process.off("SIGHUP", requestShutdown)),
       )
-      renderer.once("destroy", () => Deferred.doneUnsafe(shutdown, Effect.void))
+      renderer.once("destroy", requestShutdown)
       const pluginRuntime = createPluginRuntime()
 
       yield* Effect.tryPromise(async () => {
@@ -246,9 +260,8 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
           return (
             <ExitProvider
               exit={(reason) => {
-                if (renderer.isDestroyed) return
                 exit.reason = reason
-                destroyRenderer(renderer)
+                requestShutdown()
               }}
             >
               <EpilogueProvider set={(value) => (exit.epilogue = value)}>
@@ -317,6 +330,9 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
                                                                   <LocationProvider>
                                                                     <App
                                                                       onSnapshot={input.onSnapshot}
+                                                                      onSessionSnapshot={(session) =>
+                                                                        (currentSessionSnapshot = session)
+                                                                      }
                                                                       pluginHost={input.pluginHost}
                                                                     />
                                                                   </LocationProvider>
@@ -362,7 +378,11 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
   })
 })
 
-function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPluginHost }) {
+function App(props: {
+  onSnapshot?: () => Promise<string[]>
+  onSessionSnapshot?: (session?: { readonly title: string; readonly id: string }) => void
+  pluginHost: TuiPluginHost
+}) {
   const startup = useTuiStartup()
   const tuiConfig = useTuiConfig()
   const route = useRoute()
@@ -454,12 +474,16 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
     if (!terminalTitleEnabled() || Flag.OPENCODE_DISABLE_TERMINAL_TITLE) return
 
     if (route.data.type === "home") {
+      props.onSessionSnapshot?.(undefined)
       renderer.setTerminalTitle("OpenCode Nexus")
       return
     }
 
     if (route.data.type === "session") {
       const session = sync.session.get(route.data.sessionID)
+      props.onSessionSnapshot?.(
+        session && !isDefaultTitle(session.title) ? { title: session.title, id: session.id } : undefined,
+      )
       if (!session || isDefaultTitle(session.title)) {
         renderer.setTerminalTitle("OpenCode Nexus")
         return
@@ -471,6 +495,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
     }
 
     if (route.data.type === "plugin") {
+      props.onSessionSnapshot?.(undefined)
       renderer.setTerminalTitle(`ONX | ${route.data.id}`)
     }
   })

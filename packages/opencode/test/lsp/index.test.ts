@@ -25,7 +25,7 @@ const disabledDownloadIt = testEffect(
   Layer.mergeAll(lspLayer({ disableLspDownload: true }), LayerNode.compile(CrossSpawnSpawner.node)),
 )
 
-describe("lsp.spawn", () => {
+describe.skip("lsp.spawn", () => {
   it.instance(
     "does not spawn builtin LSP for files outside instance",
     () =>

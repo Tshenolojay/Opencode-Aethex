@@ -415,7 +415,6 @@ export async function create(input: {
   // not add a post-match settle/debounce delay. See PR #23771.
   async function requestDocumentDiagnostics(filePath: string) {
     const state = documentPullState()
-    if (!state.supported) return { handled: false, matched: false }
     return requestDiagnostics(
       filePath,
       [
@@ -429,13 +428,12 @@ export async function create(input: {
   async function requestFullDiagnostics(filePath: string) {
     const documentState = documentPullState()
     const workspaceState = workspacePullState()
-    if (!documentState.supported && !workspaceState.supported) return { handled: false, matched: false }
     return mergeResults(
       filePath,
       await Promise.all([
-        ...(documentState.supported ? [requestDiagnosticReport(filePath)] : []),
+        requestDiagnosticReport(filePath),
         ...documentState.documentIdentifiers.map((identifier) => requestDiagnosticReport(filePath, identifier)),
-        ...(workspaceState.supported ? [requestWorkspaceDiagnosticReport(filePath)] : []),
+        requestWorkspaceDiagnosticReport(filePath),
         ...workspaceState.workspaceIdentifiers.map((identifier) =>
           requestWorkspaceDiagnosticReport(filePath, identifier),
         ),

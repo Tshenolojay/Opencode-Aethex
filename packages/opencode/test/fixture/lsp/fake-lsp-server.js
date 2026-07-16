@@ -242,8 +242,11 @@ function handle(raw) {
 }
 
 process.stdin.on("data", (chunk) => {
-  readBuffer = Buffer.concat([readBuffer, chunk])
+  const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+  readBuffer = Buffer.concat([readBuffer, buffer])
   const { messages, rest } = decodeFrames(readBuffer)
   readBuffer = rest
   for (const message of messages) handle(message)
 })
+
+process.stdin.resume()

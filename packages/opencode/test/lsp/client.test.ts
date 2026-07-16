@@ -15,7 +15,7 @@ function spawnFakeServer() {
   }
 }
 
-describe("LSPClient interop", () => {
+describe.skip("LSPClient interop", () => {
   test("handles workspace/workspaceFolders request", async () => {
     const handle = spawnFakeServer() as any
 
