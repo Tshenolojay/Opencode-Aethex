@@ -1,23 +1,23 @@
 <p align="center">
-  <a href="https://github.com/Tshenolojay/Opencode-Nexus">
+  <a href="https://github.com/Tshenolojay/Opencode-Aethex">
     <picture>
       <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
       <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="OpenCode Nexus logo">
+      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="OpenCode Aethex logo">
     </picture>
   </a>
 </p>
 <p align="center">The AI coding agent with intelligent task orchestration.</p>
 <p align="center">
-  <a href="https://github.com/Tshenolojay/Opencode-Nexus">OpenCode Nexus</a> is a
+  <a href="https://github.com/Tshenolojay/Opencode-Aethex">OpenCode Aethex</a> is a
   <a href="https://github.com/anomalyco/opencode">OpenCode</a> fork enhanced with a task-level orchestration layer.
 </p>
 
 ---
 
-## What is OpenCode Nexus?
+## What is OpenCode Aethex?
 
-OpenCode Nexus is an AI development platform built on [OpenCode](https://github.com/anomalyco/opencode) and extended with an **Orchestration Engine** — an intelligent layer that decides *how* a task should be done before any agent runs.
+OpenCode Aethex is an AI development platform built on [OpenCode](https://github.com/anomalyco/opencode) and extended with an **Orchestration Engine** — an intelligent layer that decides *how* a task should be done before any agent runs.
 
 For every prompt it:
 
@@ -32,29 +32,29 @@ This lets complex work route itself to the right agents and models automatically
 
 ```bash
 # Prerequisites: Bun (https://bun.sh) and Node 20+
-git clone https://github.com/Tshenolojay/Opencode-Nexus.git
-cd Opencode-Nexus
+git clone https://github.com/Tshenolojay/Opencode-Aethex.git
+cd Opencode-Aethex
 bun install
 bun turbo build
 
 # Run the agent from a project directory
-bun run --cwd packages/opencode opencode-nexus
+bun run --cwd packages/opencode opencode-aethex
 ```
 
-OpenCode Nexus is built from this repository and includes the orchestration engine compiled into every binary. Upstream OpenCode install methods (`brew`, `npm i -g opencode-ai`, etc.) install the base agent without orchestration — use the build above for the full experience.
+OpenCode Aethex is built from this repository and includes the orchestration engine compiled into every binary. Upstream OpenCode install methods (`brew`, `npm i -g opencode-ai`, etc.) install the base agent without orchestration — use the build above for the full experience.
 
 > **Tip:** Remove OpenCode versions older than `0.1.x` before installing.
 
 ### Desktop App
 
 Desktop builds are available from the
-[releases page](https://github.com/Tshenolojay/Opencode-Nexus/releases).
+[releases page](https://github.com/Tshenolojay/Opencode-Aethex/releases).
 
 ## Orchestration Engine
 
 The engine lives in **`packages/orchestrator`** (`@opencode-ai/orchestrator`) and is described as:
 
-> *Intelligent orchestration layer for OpenCode Nexus — task classification, confidence estimation, agent dispatch, and prompt augmentation.*
+> *Intelligent orchestration layer for OpenCode Aethex — task classification, confidence estimation, agent dispatch, and prompt augmentation.*
 
 ### The `orchestrate` flow
 
@@ -112,7 +112,7 @@ The engine is designed to plug into the agent rather than replace it. Key integr
 
 ## Agents
 
-OpenCode Nexus includes two built-in agents you can switch between with the `Tab` key:
+OpenCode Aethex includes two built-in agents you can switch between with the `Tab` key:
 
 - **build** — Default, full-access agent for development work.
 - **plan** — Read-only agent for analysis and code exploration (denies edits, asks before bash).

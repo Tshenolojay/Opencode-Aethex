@@ -14,7 +14,7 @@
   node_modules ? callPackage ./node-modules.nix { },
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
-  pname = "opencode-nexus";
+  pname = "opencode-aethex";
   inherit (node_modules) version src;
   inherit node_modules;
 
@@ -62,10 +62,10 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   installPhase = ''
     runHook preInstall
 
-    install -Dm755 dist/opencode-nexus-*/bin/opencode-nexus $out/bin/opencode-nexus
+    install -Dm755 dist/opencode-aethex-*/bin/opencode-aethex $out/bin/opencode-aethex
     install -Dm644 schema.json $out/share/opencode/schema.json
 
-    wrapProgram $out/bin/opencode-nexus \
+    wrapProgram $out/bin/opencode-aethex \
       --prefix PATH : ${
         lib.makeBinPath (
           [
@@ -81,9 +81,9 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   postInstall = lib.optionalString (stdenvNoCC.buildPlatform.canExecute stdenvNoCC.hostPlatform) ''
     # trick yargs into also generating zsh completions
-    installShellCompletion --cmd opencode-nexus \
-      --bash <($out/bin/opencode-nexus completion) \
-      --zsh <(SHELL=/bin/zsh $out/bin/opencode-nexus completion)
+    installShellCompletion --cmd opencode-aethex \
+      --bash <($out/bin/opencode-aethex completion) \
+      --zsh <(SHELL=/bin/zsh $out/bin/opencode-aethex completion)
   '';
 
   nativeInstallCheckInputs = [
@@ -103,7 +103,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     description = "The open source coding agent";
     homepage = "https://opencode.ai";
     license = lib.licenses.mit;
-    mainProgram = "opencode-nexus";
+    mainProgram = "opencode-aethex";
     inherit (node_modules.meta) platforms;
   };
 })

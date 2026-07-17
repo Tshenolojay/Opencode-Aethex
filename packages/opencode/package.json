@@ -16,7 +16,7 @@
     "dev:temporary": "bun run --conditions=browser ./src/temporary.ts"
   },
   "bin": {
-    "opencode-nexus": "./bin/opencode"
+    "opencode-aethex": "./bin/opencode"
   },
   "exports": {
     "./*": "./src/*.ts"

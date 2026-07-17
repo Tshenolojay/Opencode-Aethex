@@ -286,7 +286,7 @@
       "name": "@opencode-ai/core",
       "version": "1.17.14",
       "bin": {
-        "opencode-nexus": "./bin/opencode",
+        "opencode-aethex": "./bin/opencode",
       },
       "dependencies": {
         "@ai-sdk/alibaba": "1.0.17",
@@ -559,7 +559,7 @@
       "name": "opencode",
       "version": "1.17.14",
       "bin": {
-        "opencode-nexus": "./bin/opencode",
+        "opencode-aethex": "./bin/opencode",
       },
       "dependencies": {
         "@actions/core": "1.11.1",

@@ -8,7 +8,7 @@ import { Flock } from "./util/flock"
 import { Flag } from "./flag/flag"
 import { makeGlobalNode } from "./effect/app-node"
 
-const app = "opencode-nexus"
+const app = "opencode-aethex"
 const data = path.join(xdgData!, app)
 const cache = path.join(xdgCache!, app)
 const config = path.join(xdgConfig!, app)
@@ -17,7 +17,7 @@ const tmp = path.join(os.tmpdir(), app)
 
 const paths = {
   get home() {
-    return process.env.OPENCODE_NEXUS_HOME ?? process.env.OPENCODE_TEST_HOME ?? os.homedir()
+    return process.env.OPENCODE_AETHEX_HOME ?? process.env.OPENCODE_TEST_HOME ?? os.homedir()
   },
   data,
   bin: path.join(cache, "bin"),
@@ -34,7 +34,7 @@ export const Path = paths
 Flock.setGlobal({ state })
 
 // Phase 11 — first-launch migration from legacy config dirs into the new
-// `opencode-nexus` locations.  Copies non-destructively (never overwrites
+// `opencode-aethex` locations.  Copies non-destructively (never overwrites
 // existing files) and only runs once (the target dir won't exist yet).
 const legacyConfigDirs = [
   path.join(os.homedir(), ".opencode"),

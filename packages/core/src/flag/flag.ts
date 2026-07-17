@@ -5,19 +5,19 @@ export function truthy(key: string) {
   return value === "true" || value === "1"
 }
 
-// Phase 6 — read an OPENCODE_NEXUS_* var first, fall back to the legacy
+// Phase 6 — read an OPENCODE_AETHEX_* var first, fall back to the legacy
 // OPENCODE_* name, and emit a one-time deprecation notice when the old
 // variable is actually set.
-const _nexusWarned = new Set<string>()
-function nexusEnv(suffix: string): string | undefined {
-  const neu = process.env["OPENCODE_NEXUS_" + suffix]
+const _aethexWarned = new Set<string>()
+function aethexEnv(suffix: string): string | undefined {
+  const neu = process.env["OPENCODE_AETHEX_" + suffix]
   if (neu !== undefined) return neu
   const legacy = process.env["OPENCODE_" + suffix]
   if (legacy !== undefined) {
-    if (!_nexusWarned.has(suffix)) {
-      _nexusWarned.add(suffix)
+    if (!_aethexWarned.has(suffix)) {
+      _aethexWarned.add(suffix)
       process.stderr.write(
-        `[OpenCode Nexus] Deprecated: OPENCODE_${suffix} is set but will be removed in a future release. Use OPENCODE_NEXUS_${suffix} instead.\n`,
+        `[OpenCode Aethex] Deprecated: OPENCODE_${suffix} is set but will be removed in a future release. Use OPENCODE_AETHEX_${suffix} instead.\n`,
       )
     }
     return legacy
@@ -82,7 +82,7 @@ export const Flag = {
     return process.env["OPENCODE_TUI_CONFIG"]
   },
   get OPENCODE_CONFIG_DIR() {
-    return nexusEnv("CONFIG_DIR")
+    return aethexEnv("CONFIG_DIR")
   },
   get OPENCODE_PURE() {
     return truthy("OPENCODE_PURE")
