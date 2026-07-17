@@ -146,7 +146,7 @@ const table = sqliteTable("session", {
 
 ## Type Checking
 
-- Always run `bun typecheck` from package directories (e.g., `packages/opencode`), never `tsc` directly.
+- Do NOT run `bun typecheck` or `turbo typecheck` (or any typecheck verification) when pushing to GitHub.
 
 ## V2 Session Core
 
