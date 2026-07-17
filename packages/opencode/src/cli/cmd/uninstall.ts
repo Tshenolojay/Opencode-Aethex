@@ -55,7 +55,7 @@ export const UninstallCommand = {
     UI.empty()
     UI.println(UI.logo("  "))
     UI.empty()
-    prompts.intro("Uninstall OpenCode Nexus")
+    prompts.intro("Uninstall OpenCode Aethex")
 
     const method = await Installation.method()
     prompts.log.info(`Installation method: ${method}`)
@@ -229,7 +229,7 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
   }
 
   UI.empty()
-  prompts.log.success("Thank you for using OpenCode Nexus!")
+  prompts.log.success("Thank you for using OpenCode Aethex!")
 }
 
 async function getShellConfigFile(): Promise<string | null> {

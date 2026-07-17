@@ -33,7 +33,7 @@ export function Navbar(props: { sessionID?: string }) {
     >
       <box gap={1} flexDirection="row" alignItems="center">
         <text fg={theme.text}>
-          <b>OpenCode Nexus</b>
+          <b>OpenCode Aethex</b>
         </text>
         <Show when={session()}>
           {(s) => <text fg={theme.textMuted}>› {Locale.truncate(s().title ?? "", 40)}</text>}

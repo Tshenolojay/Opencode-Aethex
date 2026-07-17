@@ -48,7 +48,7 @@ describe("WSL server settings presentation", () => {
         matchesDesktop: null,
         error: null,
       }),
-    ).toBe("Install OpenCode Nexus")
+    ).toBe("Install OpenCode Aethex")
     expect(
       wslOpencodeAction({
         distro: "Debian",
@@ -58,7 +58,7 @@ describe("WSL server settings presentation", () => {
         matchesDesktop: false,
         error: null,
       }),
-    ).toBe("Update OpenCode Nexus")
+    ).toBe("Update OpenCode Aethex")
     expect(
       wslOpencodeAction({
         distro: "Debian",

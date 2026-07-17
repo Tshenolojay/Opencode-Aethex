@@ -74,7 +74,7 @@ const getBase = (appId: string): Configuration => ({
     sign: true,
   },
   protocols: {
-    name: "OpenCode Nexus",
+    name: "OpenCode Aethex",
     schemes: ["opencode"],
   },
   win: {
@@ -133,8 +133,8 @@ function getConfig() {
       return {
         ...base,
         appId,
-        productName: "OpenCode Nexus",
-        protocols: { name: "OpenCode Nexus", schemes: ["opencode"] },
+        productName: "OpenCode Aethex",
+        protocols: { name: "OpenCode Aethex", schemes: ["opencode"] },
         publish: { provider: "github", owner: "anomalyco", repo: "opencode", channel: "latest" },
         deb: { fpm: [legacyDesktopEntryFpm] },
         rpm: { packageName: "opencode", fpm: [legacyDesktopEntryFpm] },

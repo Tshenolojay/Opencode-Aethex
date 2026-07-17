@@ -53,8 +53,8 @@ export const wslRuntimeRetryable = (runtime: WslServerRuntime) =>
 
 export function wslOpencodeAction(check?: WslOpencodeCheck) {
   if (!check) return
-  if (!check.resolvedPath) return "Install OpenCode Nexus"
-  if (check.matchesDesktop === false) return "Update OpenCode Nexus"
+  if (!check.resolvedPath) return "Install OpenCode Aethex"
+  if (check.matchesDesktop === false) return "Update OpenCode Aethex"
 }
 
 export function wslDistroReady(state: WslServersState | undefined, name: string) {

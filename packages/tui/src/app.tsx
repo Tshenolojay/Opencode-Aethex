@@ -475,7 +475,7 @@ function App(props: {
 
     if (route.data.type === "home") {
       props.onSessionSnapshot?.(undefined)
-      renderer.setTerminalTitle("OpenCode Nexus")
+      renderer.setTerminalTitle("OpenCode Aethex")
       return
     }
 
@@ -485,7 +485,7 @@ function App(props: {
         session && !isDefaultTitle(session.title) ? { title: session.title, id: session.id } : undefined,
       )
       if (!session || isDefaultTitle(session.title)) {
-        renderer.setTerminalTitle("OpenCode Nexus")
+        renderer.setTerminalTitle("OpenCode Aethex")
         return
       }
 

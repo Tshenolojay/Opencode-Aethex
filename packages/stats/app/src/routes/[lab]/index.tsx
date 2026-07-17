@@ -119,7 +119,7 @@ export default function StatsLab() {
       <Meta name="description" content={labDescription()} />
       <LocaleLinks path={labPath()} />
       <Meta property="og:type" content="website" />
-          <Meta property="og:site_name" content="OpenCode Nexus" />
+          <Meta property="og:site_name" content="OpenCode Aethex" />
       <Meta property="og:title" content={labTitle()} />
       <Meta property="og:description" content={labDescription()} />
       <Meta property="og:url" content={labUrl()} />

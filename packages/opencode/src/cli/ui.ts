@@ -45,12 +45,22 @@ export function empty() {
   blank = true
 }
 
+const forkCredit = [
+  `${Style.TEXT_DIM}Forked by: AetherLabs Technologies & Business Solutions Pty (South Africa)${Style.TEXT_NORMAL}`,
+  `${Style.TEXT_DIM}Developer: Tshenolo Jautse${Style.TEXT_NORMAL}`,
+]
+
 export function logo(pad?: string) {
   if (!process.stdout.isTTY && !process.stderr.isTTY) {
     const result = []
     for (const row of wordmark) {
       if (pad) result.push(pad)
       result.push(row)
+      result.push(EOL)
+    }
+    for (const line of forkCredit) {
+      if (pad) result.push(pad)
+      result.push(line)
       result.push(EOL)
     }
     return result.join("").trimEnd()
@@ -100,6 +110,11 @@ export function logo(pad?: string) {
     result.push(draw(other, right.fg, right.shadow, right.bg))
     result.push(EOL)
   })
+  for (const line of forkCredit) {
+    if (pad) result.push(pad)
+    result.push(line)
+    result.push(EOL)
+  }
   return result.join("").trimEnd()
 }
 

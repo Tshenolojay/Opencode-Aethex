@@ -1065,9 +1065,9 @@
       },
       "devDependencies": {
         "@astrojs/check": "0.9.6",
-        "@types/node": "catalog:",
         "@opencode-ai/plugin": "workspace:*",
         "@opencode-ai/sdk": "workspace:*",
+        "@types/node": "catalog:",
         "opencode": "workspace:*",
         "typescript": "catalog:",
       },

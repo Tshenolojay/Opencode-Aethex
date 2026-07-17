@@ -194,7 +194,7 @@ function build(input: SplashWriterInput, kind: "entry" | "exit", ctx: Scrollback
       })
     }
 
-    push(lines, body_left, top, "OpenCode Nexus", right, undefined, TextAttributes.BOLD)
+    push(lines, body_left, top, "OpenCode Aethex", right, undefined, TextAttributes.BOLD)
     if (input.detail) {
       push(
         lines,
@@ -234,7 +234,7 @@ function build(input: SplashWriterInput, kind: "entry" | "exit", ctx: Scrollback
       lines,
       body_left + label.length,
       top + 1,
-      `opencode --mini -s ${meta.session_id}`,
+      `opencode-aethex --mini -s ${meta.session_id}`,
       right,
       undefined,
       TextAttributes.BOLD,

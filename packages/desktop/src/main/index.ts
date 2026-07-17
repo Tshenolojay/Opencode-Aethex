@@ -46,7 +46,7 @@ import { cleanupStoreFiles } from "./store-cleanup"
 const APP_NAMES: Record<string, string> = {
   dev: "OpenCode Dev",
   beta: "OpenCode Beta",
-  prod: "OpenCode Nexus",
+  prod: "OpenCode Aethex",
 }
 const APP_IDS: Record<string, string> = {
   dev: "ai.opencode.desktop.dev",

@@ -128,7 +128,7 @@ export function make(input: {
       },
       authMethods: [authMethod],
       agentInfo: {
-        name: "OpenCode Nexus",
+        name: "OpenCode Aethex",
         version: InstallationVersion,
       },
     }
