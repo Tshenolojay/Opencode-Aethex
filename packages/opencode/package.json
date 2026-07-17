@@ -1,10 +1,31 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "version": "1.17.14",
-  "name": "opencode",
+  "name": "opencode-aethex",
+  "description": "OpenCode Aethex — AI coding agent with intelligent task orchestration. A fork of OpenCode enhanced with an orchestration engine for task classification, confidence estimation, agent dispatch, and prompt augmentation.",
   "type": "module",
   "license": "MIT",
-  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tshenolojay/Opencode-Aethex.git"
+  },
+  "homepage": "https://github.com/Tshenolojay/Opencode-Aethex#readme",
+  "bugs": {
+    "url": "https://github.com/Tshenolojay/Opencode-Aethex/issues"
+  },
+  "keywords": [
+    "opencode",
+    "ai",
+    "coding-agent",
+    "orchestration",
+    "cli",
+    "llm",
+    "code assistant"
+  ],
+  "author": "Tshenolo Jautse",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "test": "bun test --timeout 30000 --only-failures",

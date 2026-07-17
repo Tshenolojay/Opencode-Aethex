@@ -130,6 +130,10 @@ For contributing, read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pul
 
 This repository carries the full OpenCode history (forked) with the Orchestration Engine developed on the `orchestration-engine` branch and merged into `main`. The engine is actively developed under `packages/orchestrator`.
 
+## Feedback & Issues
+
+Found a bug or have a feature request? Please [open an issue](https://github.com/Tshenolojay/Opencode-Aethex/issues) on GitHub. Your feedback helps us improve OpenCode Aethex.
+
 ---
 
 **Community:** [Discord](https://discord.gg/opencode) · [X.com](https://x.com/opencode)
