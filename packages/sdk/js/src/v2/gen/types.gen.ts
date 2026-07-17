@@ -93,6 +93,12 @@ export type Event =
   | EventWorktreeFailed
   | EventServerConnected
   | EventGlobalDisposed
+  | EventExecutionPackageUpdated
+  | EventExecutionPlanningUpdated
+  | EventExecutionReasoningUpdated
+  | EventExecutionSpecialistPlanUpdated
+  | EventExecutionModelSelectionUpdated
+  | EventExecutionCompleted
   | EventServerInstanceDisposed
 
 export type QuestionReplied = {
@@ -726,6 +732,38 @@ export type QuestionTool = {
 }
 
 export type QuestionAnswer = Array<string>
+
+export type ExecutionPackage = {
+  sessionID: string
+  timestamp: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+  currentTask?: string
+  confidence?: string
+  confidenceScore?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+  status?: string
+  progress?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+  activeWorkflow?: string
+  specialists?: Array<{
+    name: string
+    role?: string
+  }>
+  planningSummary?: string
+  consensusSummary?: string
+  provider?: string
+  model?: string
+  capabilityMatch?: string
+  routingStrategy?: string
+  fallbackModel?: string
+  repositoryIntelligence?: string
+  architectureSummary?: string
+  dependencySummary?: string
+  documentationSummary?: string
+  verificationSummary?: string
+  recommendations?: Array<string>
+  risks?: Array<string>
+  constraints?: Array<string>
+  toolAdvice?: Array<string>
+  workflowSuggestions?: Array<string>
+}
 
 export type GlobalEvent = {
   directory: string
@@ -1598,6 +1636,67 @@ export type GlobalEvent = {
         type: "global.disposed"
         properties: {
           [key: string]: unknown
+        }
+      }
+    | {
+        id: string
+        type: "execution.package.updated"
+        properties: {
+          sessionID: string
+          package: ExecutionPackage
+        }
+      }
+    | {
+        id: string
+        type: "execution.planning.updated"
+        properties: {
+          sessionID: string
+          summary?: string
+          recommendations?: Array<string>
+          risks?: Array<string>
+          constraints?: Array<string>
+        }
+      }
+    | {
+        id: string
+        type: "execution.reasoning.updated"
+        properties: {
+          sessionID: string
+          confidence?: string
+          confidenceScore?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+        }
+      }
+    | {
+        id: string
+        type: "execution.specialist-plan.updated"
+        properties: {
+          sessionID: string
+          specialists?: Array<{
+            name: string
+            role?: string
+          }>
+          consensusSummary?: string
+        }
+      }
+    | {
+        id: string
+        type: "execution.model-selection.updated"
+        properties: {
+          sessionID: string
+          provider?: string
+          model?: string
+          capabilityMatch?: string
+          routingStrategy?: string
+          fallbackModel?: string
+        }
+      }
+    | {
+        id: string
+        type: "execution.completed"
+        properties: {
+          sessionID: string
+          currentTask?: string
+          status?: string
         }
       }
     | EventServerInstanceDisposed
@@ -2847,6 +2946,38 @@ export type QuestionRejected2 = {
   }
 }
 
+export type ExecutionPackage1 = {
+  sessionID: string
+  timestamp: number | "NaN" | "Infinity" | "-Infinity"
+  currentTask?: string
+  confidence?: string
+  confidenceScore?: number | "NaN" | "Infinity" | "-Infinity"
+  status?: string
+  progress?: number | "NaN" | "Infinity" | "-Infinity"
+  activeWorkflow?: string
+  specialists?: Array<{
+    name: string
+    role?: string
+  }>
+  planningSummary?: string
+  consensusSummary?: string
+  provider?: string
+  model?: string
+  capabilityMatch?: string
+  routingStrategy?: string
+  fallbackModel?: string
+  repositoryIntelligence?: string
+  architectureSummary?: string
+  dependencySummary?: string
+  documentationSummary?: string
+  verificationSummary?: string
+  recommendations?: Array<string>
+  risks?: Array<string>
+  constraints?: Array<string>
+  toolAdvice?: Array<string>
+  workflowSuggestions?: Array<string>
+}
+
 export type V2Event =
   | ModelsDevRefreshed
   | IntegrationUpdated
@@ -2936,6 +3067,12 @@ export type V2Event =
   | WorktreeFailed
   | ServerConnected
   | GlobalDisposed
+  | ExecutionPackageUpdated
+  | ExecutionPlanningUpdated
+  | ExecutionReasoningUpdated
+  | ExecutionSpecialistPlanUpdated
+  | ExecutionModelSelectionUpdated
+  | ExecutionCompleted
 
 export type V2EventStream = string
 
@@ -3009,6 +3146,38 @@ export type EventTuiSessionSelect2 = {
      */
     sessionID: string
   }
+}
+
+export type ExecutionPackage2 = {
+  sessionID: string
+  timestamp: number | "NaN" | "Infinity" | "-Infinity"
+  currentTask?: string
+  confidence?: string
+  confidenceScore?: number | "NaN" | "Infinity" | "-Infinity"
+  status?: string
+  progress?: number | "NaN" | "Infinity" | "-Infinity"
+  activeWorkflow?: string
+  specialists?: Array<{
+    name: string
+    role?: string
+  }>
+  planningSummary?: string
+  consensusSummary?: string
+  provider?: string
+  model?: string
+  capabilityMatch?: string
+  routingStrategy?: string
+  fallbackModel?: string
+  repositoryIntelligence?: string
+  architectureSummary?: string
+  dependencySummary?: string
+  documentationSummary?: string
+  verificationSummary?: string
+  recommendations?: Array<string>
+  risks?: Array<string>
+  constraints?: Array<string>
+  toolAdvice?: Array<string>
+  workflowSuggestions?: Array<string>
 }
 
 export type CredentialValue = CredentialOAuth | CredentialKey
@@ -6100,6 +6269,127 @@ export type GlobalDisposed = {
   }
 }
 
+export type ExecutionPackageUpdated = {
+  id: string
+  metadata?: {
+    [key: string]: unknown
+  }
+  type: "execution.package.updated"
+  durable?: {
+    aggregateID: string
+    seq: number
+    version: number
+  }
+  location?: LocationRef
+  data: {
+    sessionID: string
+    package: ExecutionPackage1
+  }
+}
+
+export type ExecutionPlanningUpdated = {
+  id: string
+  metadata?: {
+    [key: string]: unknown
+  }
+  type: "execution.planning.updated"
+  durable?: {
+    aggregateID: string
+    seq: number
+    version: number
+  }
+  location?: LocationRef
+  data: {
+    sessionID: string
+    summary?: string
+    recommendations?: Array<string>
+    risks?: Array<string>
+    constraints?: Array<string>
+  }
+}
+
+export type ExecutionReasoningUpdated = {
+  id: string
+  metadata?: {
+    [key: string]: unknown
+  }
+  type: "execution.reasoning.updated"
+  durable?: {
+    aggregateID: string
+    seq: number
+    version: number
+  }
+  location?: LocationRef
+  data: {
+    sessionID: string
+    confidence?: string
+    confidenceScore?: number | "NaN" | "Infinity" | "-Infinity"
+  }
+}
+
+export type ExecutionSpecialistPlanUpdated = {
+  id: string
+  metadata?: {
+    [key: string]: unknown
+  }
+  type: "execution.specialist-plan.updated"
+  durable?: {
+    aggregateID: string
+    seq: number
+    version: number
+  }
+  location?: LocationRef
+  data: {
+    sessionID: string
+    specialists?: Array<{
+      name: string
+      role?: string
+    }>
+    consensusSummary?: string
+  }
+}
+
+export type ExecutionModelSelectionUpdated = {
+  id: string
+  metadata?: {
+    [key: string]: unknown
+  }
+  type: "execution.model-selection.updated"
+  durable?: {
+    aggregateID: string
+    seq: number
+    version: number
+  }
+  location?: LocationRef
+  data: {
+    sessionID: string
+    provider?: string
+    model?: string
+    capabilityMatch?: string
+    routingStrategy?: string
+    fallbackModel?: string
+  }
+}
+
+export type ExecutionCompleted = {
+  id: string
+  metadata?: {
+    [key: string]: unknown
+  }
+  type: "execution.completed"
+  durable?: {
+    aggregateID: string
+    seq: number
+    version: number
+  }
+  location?: LocationRef
+  data: {
+    sessionID: string
+    currentTask?: string
+    status?: string
+  }
+}
+
 export type QuestionV2Request = {
   id: string
   sessionID: string
@@ -7044,6 +7334,73 @@ export type EventGlobalDisposed = {
   type: "global.disposed"
   properties: {
     [key: string]: unknown
+  }
+}
+
+export type EventExecutionPackageUpdated = {
+  id: string
+  type: "execution.package.updated"
+  properties: {
+    sessionID: string
+    package: ExecutionPackage2
+  }
+}
+
+export type EventExecutionPlanningUpdated = {
+  id: string
+  type: "execution.planning.updated"
+  properties: {
+    sessionID: string
+    summary?: string
+    recommendations?: Array<string>
+    risks?: Array<string>
+    constraints?: Array<string>
+  }
+}
+
+export type EventExecutionReasoningUpdated = {
+  id: string
+  type: "execution.reasoning.updated"
+  properties: {
+    sessionID: string
+    confidence?: string
+    confidenceScore?: number | "NaN" | "Infinity" | "-Infinity"
+  }
+}
+
+export type EventExecutionSpecialistPlanUpdated = {
+  id: string
+  type: "execution.specialist-plan.updated"
+  properties: {
+    sessionID: string
+    specialists?: Array<{
+      name: string
+      role?: string
+    }>
+    consensusSummary?: string
+  }
+}
+
+export type EventExecutionModelSelectionUpdated = {
+  id: string
+  type: "execution.model-selection.updated"
+  properties: {
+    sessionID: string
+    provider?: string
+    model?: string
+    capabilityMatch?: string
+    routingStrategy?: string
+    fallbackModel?: string
+  }
+}
+
+export type EventExecutionCompleted = {
+  id: string
+  type: "execution.completed"
+  properties: {
+    sessionID: string
+    currentTask?: string
+    status?: string
   }
 }
 
@@ -11470,6 +11827,44 @@ export type V2SessionGetResponses = {
 }
 
 export type V2SessionGetResponse = V2SessionGetResponses[keyof V2SessionGetResponses]
+
+export type V2SessionExecutionPackageData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: never
+  url: "/api/session/{sessionID}/execution-package"
+}
+
+export type V2SessionExecutionPackageErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * UnauthorizedError
+   */
+  401: UnauthorizedError
+  /**
+   * SessionNotFoundError
+   */
+  404: SessionNotFoundError
+}
+
+export type V2SessionExecutionPackageError = V2SessionExecutionPackageErrors[keyof V2SessionExecutionPackageErrors]
+
+export type V2SessionExecutionPackageResponses = {
+  /**
+   * Success
+   */
+  200: {
+    data?: ExecutionPackage
+  }
+}
+
+export type V2SessionExecutionPackageResponse =
+  V2SessionExecutionPackageResponses[keyof V2SessionExecutionPackageResponses]
 
 export type V2SessionSwitchAgentData = {
   body: {

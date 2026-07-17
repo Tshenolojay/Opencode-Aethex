@@ -3,8 +3,11 @@ export * as SessionIntegration from "./session-integration"
 import { Context, Effect, Layer } from "effect"
 import type { ExecutionDecision } from "./contracts/execution-decision"
 import type { ExecutionPackage } from "./integration/execution-package"
+import { ExecutionPackage as ExecutionPackageContract } from "@opencode-ai/schema/execution-package"
 import { OrchestratorService } from "./orchestrator"
 import type { PhaseEntry } from "./orchestrator"
+
+type ExecutionPackageInfo = typeof ExecutionPackageContract.Info.Type
 
 /**
  * Sole orchestration entry point.
@@ -40,6 +43,7 @@ export interface Interface {
   readonly decide: (input: IntegrationInput) => Effect.Effect<IntegrationResult>
   readonly bypass: (input: IntegrationInput) => Effect.Effect<IntegrationResult>
   readonly integrate: (input: IntegrationInput) => Effect.Effect<ExecutionPackage>
+  readonly summary: (pkg: ExecutionPackage) => Effect.Effect<ExecutionPackageInfo>
 }
 
 function buildSummary(diagnostics: readonly PhaseEntry[]): {
@@ -117,6 +121,42 @@ const make = Effect.gen(function* () {
     return executionPackage
   })
 
+  const summary = Effect.fn("SessionIntegration.summary")(function* (pkg: ExecutionPackage) {
+    const specialists = pkg.specialistPlan?.selected?.map((match) => ({
+      name: match.specialist?.name ?? "unknown",
+    }))
+    const narrative = pkg.executionNarrative
+    const routing = pkg.routingMetadata
+    return {
+      sessionID: pkg.sessionID as ExecutionPackageInfo["sessionID"],
+      timestamp: pkg.timestamp,
+      currentTask: narrative?.taskSummary ?? pkg.conversationSummary ?? pkg.taskClassification?.type,
+      confidence: pkg.confidence,
+      confidenceScore: pkg.confidenceScore?.score,
+      status: pkg.executionNotes === undefined ? "idle" : "busy",
+      progress: pkg.confidenceScore?.score,
+      activeWorkflow: narrative?.recommendedWorkflow,
+      specialists: specialists?.length ? specialists : undefined,
+      planningSummary: pkg.planningPolicy?.label ?? narrative?.executionStrategy,
+      consensusSummary: narrative?.specialistConsensus,
+      provider: routing?.selectedProviderID,
+      model: routing?.selectedModelID,
+      capabilityMatch: pkg.capabilityPlan?.reason,
+      routingStrategy: routing?.routingStrategy ?? routing?.routingPolicy,
+      fallbackModel: routing?.fallbackModelID,
+      repositoryIntelligence: pkg.repositoryIntelligence?.enrichedSummary ?? narrative?.repositoryFindings,
+      architectureSummary: pkg.architectureIntelligence?.summary ?? narrative?.architectureFindings,
+      dependencySummary: pkg.dependencyIntelligence?.summary ?? narrative?.dependencyFindings,
+      documentationSummary: pkg.documentationIntelligence?.summary ?? narrative?.documentationFindings,
+      verificationSummary: pkg.verificationIntelligence?.summary ?? narrative?.verificationFindings,
+      recommendations: pkg.executionNotes,
+      risks: narrative?.risks,
+      constraints: narrative?.constraints,
+      toolAdvice: pkg.executionIntelligence?.toolAdvice?.suggestedTools,
+      workflowSuggestions: narrative?.recommendedWorkflow ? [narrative.recommendedWorkflow] : undefined,
+    } satisfies ExecutionPackageInfo
+  })
+
   const bypass = Effect.fn("SessionIntegration.bypass")(function* (input: IntegrationInput) {
     const decision = yield* orchestrator.skip({
       promptText: input.promptText,
@@ -158,7 +198,7 @@ const make = Effect.gen(function* () {
     return { decision: executionDecision, shouldBypass: true }
   })
 
-  return Service.of({ decide, bypass, integrate })
+  return Service.of({ decide, bypass, integrate, summary })
 })
 
 const layer = Layer.effect(Service, make)

@@ -19,6 +19,7 @@ import type {
   VcsInfo,
   SnapshotFileDiff,
   ConsoleState,
+  ExecutionPackage,
 } from "@opencode-ai/sdk/v2"
 import { createStore, produce, reconcile } from "solid-js/store"
 import { useProject } from "./project"
@@ -87,6 +88,9 @@ export const {
       session_diff: {
         [sessionID: string]: SnapshotFileDiff[]
       }
+      execution_package: {
+        [sessionID: string]: ExecutionPackage
+      }
       todo: {
         [sessionID: string]: Todo[]
       }
@@ -127,6 +131,7 @@ export const {
       session: [],
       session_status: {},
       session_diff: {},
+      execution_package: {},
       todo: {},
       message: {},
       part: {},
@@ -309,6 +314,11 @@ export const {
 
         case "session.status": {
           setStore("session_status", event.properties.sessionID, event.properties.status)
+          break
+        }
+
+        case "execution.package.updated": {
+          setStore("execution_package", event.properties.sessionID, event.properties.package)
           break
         }
 
@@ -524,6 +534,14 @@ export const {
             sdk.client.session.status({ workspace }).then((x) => {
               setStore("session_status", reconcile(x.data ?? {}))
             }),
+            ...store.session.map((session) =>
+              sdk.client.session
+                .executionPackage({ sessionID: session.id })
+                .then((x) => {
+                  if (x.data) setStore("execution_package", session.id, reconcile(x.data))
+                })
+                .catch(() => {})
+            ),
             sdk.client.provider.auth({ workspace }).then((x) => setStore("provider_auth", reconcile(x.data ?? {}))),
             sdk.client.vcs.get({ workspace }).then((x) => setStore("vcs", reconcile(x.data))),
             project.workspace.sync(),

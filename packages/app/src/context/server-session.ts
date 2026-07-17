@@ -8,6 +8,7 @@ import type {
   QuestionRequest,
   Session,
   SessionStatus,
+  ExecutionPackage,
   SnapshotFileDiff,
   Todo,
 } from "@opencode-ai/sdk/v2/client"
@@ -139,6 +140,7 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
   const [data, setData] = createStore({
     info: {} as Record<string, Session | undefined>,
     session_status: {} as Record<string, SessionStatus>,
+    execution_package: {} as Record<string, ExecutionPackage>,
     session_diff: {} as Record<string, SnapshotFileDiff[]>,
     todo: {} as Record<string, Todo[]>,
     permission: {} as Record<string, PermissionRequest[]>,
@@ -781,6 +783,11 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
       case "session.status": {
         const props = event.properties as { sessionID: string; status: SessionStatus }
         setData("session_status", props.sessionID, reconcile(props.status))
+        return
+      }
+      case "execution.package.updated": {
+        const props = event.properties as { sessionID: string; package: ExecutionPackage }
+        setData("execution_package", props.sessionID, reconcile(props.package))
         return
       }
       case "message.updated": {

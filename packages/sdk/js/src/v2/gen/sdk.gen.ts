@@ -343,6 +343,8 @@ import type {
   V2SessionCreateResponses,
   V2SessionEventsErrors,
   V2SessionEventsResponses,
+  V2SessionExecutionPackageErrors,
+  V2SessionExecutionPackageResponses,
   V2SessionGetErrors,
   V2SessionGetResponses,
   V2SessionHistoryErrors,
@@ -5531,6 +5533,29 @@ export class Session3 extends HeyApiClient {
     const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "sessionID" }] }])
     return (options?.client ?? this.client).get<V2SessionGetResponses, V2SessionGetErrors, ThrowOnError>({
       url: "/api/session/{sessionID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get execution package
+   *
+   * Retrieve the latest orchestrator execution package for a session.
+   */
+  public executionPackage<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "sessionID" }] }])
+    return (options?.client ?? this.client).get<
+      V2SessionExecutionPackageResponses,
+      V2SessionExecutionPackageErrors,
+      ThrowOnError
+    >({
+      url: "/api/session/{sessionID}/execution-package",
       ...options,
       ...params,
     })

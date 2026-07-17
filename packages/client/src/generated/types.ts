@@ -365,6 +365,39 @@ export type SessionsGetOutput = {
   }
 }["data"]
 
+export type SessionsExecutionPackageInput = { readonly sessionID: { readonly sessionID: string }["sessionID"] }
+
+export type SessionsExecutionPackageOutput = {
+  readonly data?: {
+    readonly sessionID: string
+    readonly timestamp: number | "Infinity" | "-Infinity" | "NaN"
+    readonly currentTask?: string
+    readonly confidence?: string
+    readonly confidenceScore?: number | "Infinity" | "-Infinity" | "NaN"
+    readonly status?: string
+    readonly progress?: number | "Infinity" | "-Infinity" | "NaN"
+    readonly activeWorkflow?: string
+    readonly specialists?: ReadonlyArray<{ readonly name: string; readonly role?: string }>
+    readonly planningSummary?: string
+    readonly consensusSummary?: string
+    readonly provider?: string
+    readonly model?: string
+    readonly capabilityMatch?: string
+    readonly routingStrategy?: string
+    readonly fallbackModel?: string
+    readonly repositoryIntelligence?: string
+    readonly architectureSummary?: string
+    readonly dependencySummary?: string
+    readonly documentationSummary?: string
+    readonly verificationSummary?: string
+    readonly recommendations?: ReadonlyArray<string>
+    readonly risks?: ReadonlyArray<string>
+    readonly constraints?: ReadonlyArray<string>
+    readonly toolAdvice?: ReadonlyArray<string>
+    readonly workflowSuggestions?: ReadonlyArray<string>
+  } | null
+}["data"]
+
 export type SessionsSwitchAgentInput = {
   readonly sessionID: { readonly sessionID: string }["sessionID"]
   readonly agent: { readonly agent: string }["agent"]

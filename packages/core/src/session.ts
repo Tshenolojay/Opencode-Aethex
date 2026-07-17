@@ -3,7 +3,7 @@ export * from "./session/schema"
 
 import { DateTime, Effect, Layer, Schema, Context, Stream, Option, pipe, Duration } from "effect"
 import { ListAnchor } from "@opencode-ai/schema/session"
-import { and, asc, desc, eq, gt, like, lt, or, type SQL } from "drizzle-orm"
+import { and, asc, desc, eq, gt, like, lt, or, sql, type SQL } from "drizzle-orm"
 import { ProjectV2 } from "./project"
 import { WorkspaceV2 } from "./workspace"
 import { ModelV2 } from "./model"
@@ -12,6 +12,7 @@ import { SessionMessage } from "./session/message"
 import { Prompt } from "./session/prompt"
 import { PromptInput } from "@opencode-ai/schema/prompt-input"
 import { EventV2 } from "./event"
+import { Git } from "./git"
 import { Database } from "./database/database"
 import { SessionProjector } from "./session/projector"
 import { SessionMessageTable, SessionTable } from "./session/sql"
@@ -35,6 +36,7 @@ import { SessionInput } from "./session/input"
 import { Snapshot } from "./snapshot"
 import { Flag } from "./flag/flag"
 import { SessionIntegration, OrchestratorService } from "@opencode-ai/orchestrator"
+import { ExecutionPackage as ExecutionPackageContract } from "@opencode-ai/schema/execution-package"
 import { SessionRevert } from "./session/revert"
 import { Revert } from "@opencode-ai/schema/revert"
 import { FSUtil } from "./fs-util"
@@ -42,6 +44,24 @@ import { SessionDurable } from "@opencode-ai/schema/durable-event-manifest"
 
 export const RevertState = Revert.State
 export type RevertState = Revert.State
+
+type ExecutionPackageInfo = typeof ExecutionPackageContract.Info.Type
+
+// In-process cache of the latest orchestrator ExecutionPackage summary per session.
+// The orchestrator outputs are intentionally not persisted; this surfaces the most
+// recent package to the runtime event stream and any consumers that ask.
+const executionPackages = new Map<string, ExecutionPackageInfo>()
+
+export function getExecutionPackage(sessionID: string): ExecutionPackageInfo | undefined {
+  return executionPackages.get(sessionID)
+}
+
+const getBranch = Effect.fn("V2Session.getBranch")(function* (directory: AbsolutePath) {
+  const git = yield* Git.Service
+  const repo = yield* git.repo.discover(directory)
+  if (repo === undefined) return undefined
+  return yield* git.history.branch(repo)
+})
 
 // get project -> project.locations
 //
@@ -179,6 +199,9 @@ export interface Interface {
     readonly clear: (sessionID: SessionSchema.ID) => Effect.Effect<void, NotFoundError | Snapshot.Error>
     readonly commit: (sessionID: SessionSchema.ID) => Effect.Effect<void, NotFoundError>
   }
+  readonly getExecutionPackage: (
+    sessionID: SessionSchema.ID,
+  ) => Effect.Effect<ExecutionPackageInfo | undefined>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/v2/Session") {}
@@ -362,7 +385,7 @@ const layer = Layer.effect(
       prompt: Effect.fn("V2Session.prompt")((input) =>
         Effect.uninterruptible(
           Effect.gen(function* () {
-            yield* result.get(input.sessionID)
+            const session = yield* result.get(input.sessionID)
             const prompt = resolvePrompt(input.prompt)
             const messageID = input.id ?? SessionMessage.ID.create()
             const delivery = input.delivery ?? "steer"
@@ -382,6 +405,14 @@ const layer = Layer.effect(
             if (!SessionInput.equivalent(admitted, expected))
               return yield* new PromptConflictError({ sessionID: input.sessionID, messageID })
             if (input.resume !== false) yield* execution.wake(admitted.sessionID)
+            const messageRows = yield* db
+              .select({ id: SessionMessageTable.id })
+              .from(SessionMessageTable)
+              .where(eq(SessionMessageTable.session_id, session?.id ?? input.sessionID))
+              .all()
+              .pipe(Effect.orSucceed([]))
+            const conversationLength = messageRows.length
+            const branch = session === undefined ? undefined : yield* getBranch(session.location.directory)
             if (!Flag.OPENCODE_DISABLE_ORCHESTRATOR) {
               yield* pipe(
                 Effect.serviceOption(SessionIntegration.Service),
@@ -390,22 +421,78 @@ const layer = Layer.effect(
                     onNone: () => Effect.void,
                     onSome: (service) =>
                       pipe(
-                        service.integrate({
-                          promptText: prompt,
+                         service.integrate({
+                          promptText: prompt.text,
                           sessionID: input.sessionID,
-                          filesAttached: false,
-                          conversationLength: 0,
+                          filesAttached: (prompt.files?.length ?? 0) > 0,
+                          conversationLength,
                           repositorySize: 0,
-                          contextAvailable: false,
+                          contextAvailable: session !== undefined,
                           previousToolResults: false,
-                          sessionMetadata: undefined,
+                          sessionMetadata:
+                            session === undefined
+                              ? branch === undefined
+                                ? undefined
+                                : { branch }
+                              : {
+                                  directory: session.location.directory,
+                                  workspaceID: session.location.workspaceID?.toString() ?? "",
+                                  ...(branch === undefined ? {} : { branch }),
+                                },
                           assistantResponses: undefined,
                           toolResults: undefined,
-                          projectInfo: undefined,
+                          projectInfo: session?.location.directory,
                         }),
                         Effect.timeout(Duration.seconds(5)),
                         Effect.option,
-                        Effect.asVoid,
+                        Effect.flatMap((pkg) =>
+                          Option.match(pkg, {
+                            onNone: () => Effect.void,
+                            onSome: (resolved) =>
+                              pipe(
+                                service.summary(resolved),
+                                Effect.flatMap((info) => {
+                                  executionPackages.set(info.sessionID, info)
+                                  return Effect.all([
+                                    events.publish(ExecutionPackageContract.Updated, {
+                                      sessionID: info.sessionID,
+                                      package: info,
+                                    }),
+                                    events.publish(ExecutionPackageContract.PlanningUpdated, {
+                                      sessionID: info.sessionID,
+                                      summary: info.planningSummary,
+                                      recommendations: info.recommendations,
+                                      risks: info.risks,
+                                      constraints: info.constraints,
+                                    }),
+                                    events.publish(ExecutionPackageContract.ReasoningUpdated, {
+                                      sessionID: info.sessionID,
+                                      confidence: info.confidence,
+                                      confidenceScore: info.confidenceScore,
+                                    }),
+                                    events.publish(ExecutionPackageContract.SpecialistPlanUpdated, {
+                                      sessionID: info.sessionID,
+                                      specialists: info.specialists,
+                                      consensusSummary: info.consensusSummary,
+                                    }),
+                                    events.publish(ExecutionPackageContract.ModelSelectionUpdated, {
+                                      sessionID: info.sessionID,
+                                      provider: info.provider,
+                                      model: info.model,
+                                      capabilityMatch: info.capabilityMatch,
+                                      routingStrategy: info.routingStrategy,
+                                      fallbackModel: info.fallbackModel,
+                                    }),
+                                    events.publish(ExecutionPackageContract.ExecutionCompleted, {
+                                      sessionID: info.sessionID,
+                                      currentTask: info.currentTask,
+                                      status: info.status,
+                                    }),
+                                  ])
+                                }),
+                              ),
+                          }),
+                        ),
                       ),
                   }),
                 ),
@@ -482,6 +569,7 @@ const layer = Layer.effect(
           yield* SessionRevert.commit(session).pipe(Effect.provideService(EventV2.Service, events))
         }),
       },
+      getExecutionPackage: (sessionID) => Effect.succeed(getExecutionPackage(sessionID)),
     })
 
     return result

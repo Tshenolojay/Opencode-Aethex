@@ -24,6 +24,7 @@ import { ServerEvent } from "./server-event"
 import { SessionCompactionEvent } from "./session-compaction-event"
 import { SessionEvent } from "./session-event"
 import { SessionStatusEvent } from "./session-status-event"
+import { ExecutionPackage } from "./execution-package"
 import { SessionTodo } from "./session-todo"
 import { SessionV1 } from "./session-v1"
 import { TuiEvent } from "./tui-event"
@@ -58,6 +59,7 @@ export const ServerDefinitions = Event.inventory(
   ...foundationDefinitions,
   ...featureDefinitions,
   ...SessionTodo.Event.Definitions,
+  ...ExecutionPackage.Definitions,
 )
 
 export const Definitions = Event.inventory(
@@ -79,6 +81,7 @@ export const Definitions = Event.inventory(
   ...WorkspaceEvent.Definitions,
   ...WorktreeEvent.Definitions,
   ...ServerEvent.Definitions,
+  ...ExecutionPackage.Definitions,
 )
 export const Latest = Event.latest(Definitions)
 export { Durable }

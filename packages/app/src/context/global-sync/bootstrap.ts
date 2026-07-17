@@ -272,6 +272,18 @@ export async function bootstrapDirectory(input: {
             )
           }),
         ),
+      input.session
+        ? () =>
+            Promise.all(
+              Object.keys(input.session!.get("execution_package")).map((sessionID) =>
+                retry(() => input.sdk.session.executionPackage({ sessionID }))
+                  .then((x) => {
+                    if (x.data) input.session!.set("execution_package", sessionID, reconcile(x.data!))
+                  })
+                  .catch(() => undefined),
+              ),
+            )
+        : () => Promise.resolve(input.sdk.session.executionPackage()),
       !seededProject &&
         (() => retry(() => input.sdk.project.current()).then((x) => input.setStore("project", x.data!.id))),
       !seededPath &&

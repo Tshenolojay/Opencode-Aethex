@@ -21,6 +21,7 @@ import { Model } from "@opencode-ai/schema/model"
 import { Location } from "@opencode-ai/schema/location"
 import { Revert } from "@opencode-ai/schema/revert"
 import { SessionEvent } from "@opencode-ai/schema/session-event"
+import { ExecutionPackage } from "@opencode-ai/schema/execution-package"
 
 const SessionsQueryFields = {
   workspace: Workspace.ID.pipe(Schema.optional),
@@ -166,6 +167,21 @@ export const makeSessionGroup = <I extends HttpApiMiddleware.AnyId, S>(sessionLo
             identifier: "v2.session.get",
             summary: "Get session",
             description: "Retrieve a session by ID.",
+          }),
+        ),
+    )
+    .add(
+      HttpApiEndpoint.get("session.executionPackage", "/api/session/:sessionID/execution-package", {
+        params: { sessionID: Session.ID },
+        success: Schema.Struct({ data: ExecutionPackage.Info.pipe(Schema.optional) }),
+        error: SessionNotFoundError,
+      })
+        .middleware(sessionLocationMiddleware)
+        .annotateMerge(
+          OpenApi.annotations({
+            identifier: "v2.session.executionPackage",
+            summary: "Get execution package",
+            description: "Retrieve the latest orchestrator execution package for a session.",
           }),
         ),
     )
