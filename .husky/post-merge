@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Auto-rebrand after merging upstream OpenCode updates
+MERGE_HEAD="$(git rev-parse MERGE_HEAD 2>/dev/null || true)"
+if [ -n "$MERGE_HEAD" ]; then
+  echo "→ Upstream merge detected, running rebrand..."
+  bash "$(git rev-parse --show-toplevel)/rebrand.sh"
+fi

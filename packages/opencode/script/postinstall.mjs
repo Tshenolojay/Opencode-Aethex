@@ -9,7 +9,7 @@ import { fileURLToPath } from "url"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
-const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json"), "utf8"))
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"))
 
 const platformMap = {
   darwin: "darwin",
@@ -174,10 +174,12 @@ function main() {
     }
   }
 
-  throw new Error(
-    `It seems your package manager failed to install the right opencode CLI package. Try manually installing ${packageNames()
-      .map((name) => JSON.stringify(name))
-      .join(" or ")}.`,
+  // Binary not found — warn but don't fail npm install.
+  // The bin/opencode wrapper will resolve the binary at runtime.
+  console.warn(
+    `opencode-aethex: platform binary not found during postinstall. ` +
+    `The CLI will resolve it at runtime. If it fails, try manually installing one of: ` +
+    packageNames().map((name) => JSON.stringify(name)).join(", ") + `.`,
   )
 }
 

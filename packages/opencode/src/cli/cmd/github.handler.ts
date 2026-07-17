@@ -362,7 +362,7 @@ jobs:
           persist-credentials: false
 
       - name: Run opencode
-        uses: anomalyco/opencode/github@latest${envStr}
+        uses: Tshenolojay/Opencode-Aethex/github@latest${envStr}
         with:
           model: ${provider}/${model}`,
         )
