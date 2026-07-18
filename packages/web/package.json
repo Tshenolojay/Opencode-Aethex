@@ -38,7 +38,7 @@
   "devDependencies": {
     "@opencode-ai/plugin": "workspace:*",
     "@opencode-ai/sdk": "workspace:*",
-    "opencode": "workspace:*",
+    "opencode-aethex": "workspace:*",
     "@types/node": "catalog:",
     "@astrojs/check": "0.9.6",
     "typescript": "catalog:"

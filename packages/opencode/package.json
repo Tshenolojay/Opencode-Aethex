@@ -39,20 +39,6 @@
   "bin": {
     "opencode-aethex": "./bin/opencode"
   },
-  "optionalDependencies": {
-    "opencode-linux-x64": "1.18.3",
-    "opencode-darwin-x64": "1.18.3",
-    "opencode-linux-arm64": "1.18.3",
-    "opencode-windows-x64": "1.18.3",
-    "opencode-darwin-arm64": "1.18.3",
-    "opencode-windows-arm64": "1.18.3",
-    "opencode-linux-x64-musl": "1.18.3",
-    "opencode-linux-arm64-musl": "1.18.3",
-    "opencode-linux-x64-baseline": "1.18.3",
-    "opencode-darwin-x64-baseline": "1.18.3",
-    "opencode-windows-x64-baseline": "1.18.3",
-    "opencode-linux-x64-baseline-musl": "1.18.3"
-  },
   "exports": {
     "./*": "./src/*.ts"
   },
