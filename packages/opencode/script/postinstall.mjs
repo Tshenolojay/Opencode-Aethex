@@ -9,7 +9,7 @@ import { fileURLToPath } from "url"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
-const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"))
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json"), "utf8"))
 
 const platformMap = {
   darwin: "darwin",
@@ -25,8 +25,8 @@ const archMap = {
 const platform = platformMap[os.platform()] ?? os.platform()
 const arch = archMap[os.arch()] ?? os.arch()
 const base = `opencode-aethex-${platform}-${arch}`
-const sourceBinary = platform === "windows" ? "opencode.exe" : "opencode"
-const targetBinary = path.join(__dirname, "bin", "opencode.exe")
+const sourceBinary = platform === "windows" ? "opencode-aethex.exe" : "opencode-aethex"
+const targetBinary = path.join(__dirname, "bin", platform === "windows" ? "opencode-aethex.exe" : "opencode-aethex")
 
 function supportsAvx2() {
   if (arch !== "x64") return false
