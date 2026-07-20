@@ -26,7 +26,7 @@ const platform = platformMap[os.platform()] ?? os.platform()
 const arch = archMap[os.arch()] ?? os.arch()
 const base = `opencode-aethex-${platform}-${arch}`
 const sourceBinary = platform === "windows" ? "opencode-aethex.exe" : "opencode-aethex"
-const targetBinary = path.join(__dirname, "bin", platform === "windows" ? "opencode-aethex.exe" : "opencode-aethex")
+const targetBinary = path.join(__dirname, "bin", "opencode-aethex.exe")
 
 function supportsAvx2() {
   if (arch !== "x64") return false
