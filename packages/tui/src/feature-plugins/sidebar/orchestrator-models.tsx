@@ -19,18 +19,25 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
   const pkg = createMemo(() => props.api.state.session.execution_package(props.session_id))
 
   return (
-    <Show when={pkg()?.provider || pkg()?.model || pkg()?.capabilityMatch || pkg()?.routingStrategy || pkg()?.fallbackModel}>
-      <box>
-        <text fg={theme().text}>
-          <b>Models</b>
-        </text>
+    <box>
+      <text fg={theme().text}>
+        <b>Models</b>
+      </text>
+      <Show
+        when={pkg()?.provider || pkg()?.model || pkg()?.capabilityMatch || pkg()?.routingStrategy || pkg()?.fallbackModel}
+        fallback={
+          <text fg={theme().textMuted}>
+            <span style={{ fg: theme().success }}>●</span> Ready — model selection on prompt
+          </text>
+        }
+      >
         <Row label="Provider" value={pkg()!.provider} theme={theme} />
         <Row label="Model" value={pkg()!.model} theme={theme} />
         <Row label="Capability" value={pkg()!.capabilityMatch} theme={theme} />
         <Row label="Routing" value={pkg()!.routingStrategy} theme={theme} />
         <Row label="Fallback" value={pkg()!.fallbackModel} theme={theme} />
-      </box>
-    </Show>
+      </Show>
+    </box>
   )
 }
 

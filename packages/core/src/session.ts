@@ -443,7 +443,6 @@ const layer = Layer.effect(
                           toolResults: undefined,
                           projectInfo: session?.location.directory,
                         }),
-                        Effect.timeout(Duration.seconds(5)),
                         Effect.option,
                         Effect.flatMap((pkg) =>
                           Option.match(pkg, {

@@ -19,11 +19,18 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
   const pkg = createMemo(() => props.api.state.session.execution_package(props.session_id))
 
   return (
-    <Show when={pkg()}>
-      <box>
-        <text fg={theme().text}>
-          <b>Execution</b>
-        </text>
+    <box>
+      <text fg={theme().text}>
+        <b>Execution</b>
+      </text>
+      <Show
+        when={pkg()}
+        fallback={
+          <text fg={theme().textMuted}>
+            <span style={{ fg: theme().success }}>●</span> Ready — awaiting prompt
+          </text>
+        }
+      >
         <Row label="Task" value={pkg()!.currentTask} theme={theme} />
         <Row label="Confidence" value={pkg()!.confidence} theme={theme} />
         <Row label="Status" value={pkg()!.status} theme={theme} />
@@ -33,8 +40,8 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
           </text>
         </Show>
         <Row label="Workflow" value={pkg()!.activeWorkflow} theme={theme} />
-      </box>
-    </Show>
+      </Show>
+    </box>
   )
 }
 

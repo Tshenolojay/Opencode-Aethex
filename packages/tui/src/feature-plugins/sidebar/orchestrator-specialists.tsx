@@ -9,11 +9,18 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
   const pkg = createMemo(() => props.api.state.session.execution_package(props.session_id))
 
   return (
-    <Show when={pkg()?.specialists?.length || pkg()?.planningSummary || pkg()?.consensusSummary}>
-      <box>
-        <text fg={theme().text}>
-          <b>Specialists</b>
-        </text>
+    <box>
+      <text fg={theme().text}>
+        <b>Specialists</b>
+      </text>
+      <Show
+        when={pkg()?.specialists?.length || pkg()?.planningSummary || pkg()?.consensusSummary}
+        fallback={
+          <text fg={theme().textMuted}>
+            <span style={{ fg: theme().success }}>●</span> Ready — specialists will activate on prompt
+          </text>
+        }
+      >
         <For each={pkg()!.specialists ?? []}>
           {(specialist) => (
             <text fg={theme().textMuted}>
@@ -34,8 +41,8 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
             Consensus: <span fg={theme().text}>{pkg()!.consensusSummary}</span>
           </text>
         </Show>
-      </box>
-    </Show>
+      </Show>
+    </box>
   )
 }
 

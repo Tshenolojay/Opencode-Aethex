@@ -15,8 +15,7 @@ export function Navbar(props: { sessionID?: string }) {
   const session = createMemo(() => (props.sessionID ? sync.session.get(props.sessionID) : undefined))
   const model = createMemo(() => local.model.parsed())
   const agent = createMemo(() => local.agent.current()?.name ?? "default")
-  const mcp = createMemo(() => Object.values(sync.data.mcp).filter((x) => x.status === "connected").length)
-  const lsp = createMemo(() => Object.keys(sync.data.lsp).length)
+  const branch = createMemo(() => sync.data.vcs?.branch)
 
   return (
     <box
@@ -44,12 +43,9 @@ export function Navbar(props: { sessionID?: string }) {
           when={connected()}
           fallback={<text fg={theme.warning}>/connect</text>}
         >
-          <text fg={theme.textMuted}>
-            <span style={{ fg: lsp() > 0 ? theme.success : theme.textMuted }}>•</span> {lsp()} LSP
-          </text>
-          <Show when={mcp()}>
+          <Show when={branch()}>
             <text fg={theme.textMuted}>
-              <span style={{ fg: theme.success }}>⊙</span> {mcp()} MCP
+              <span style={{ fg: theme.success }}>⎇</span> {branch()}
             </text>
           </Show>
           <text fg={theme.text}>

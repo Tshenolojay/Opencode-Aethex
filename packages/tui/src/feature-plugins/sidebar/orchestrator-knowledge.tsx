@@ -19,26 +19,31 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
   const pkg = createMemo(() => props.api.state.session.execution_package(props.session_id))
 
   return (
-    <Show
-      when={
-        pkg()?.repositoryIntelligence ||
-        pkg()?.architectureSummary ||
-        pkg()?.dependencySummary ||
-        pkg()?.documentationSummary ||
-        pkg()?.verificationSummary
-      }
-    >
-      <box>
-        <text fg={theme().text}>
-          <b>Knowledge</b>
-        </text>
+    <box>
+      <text fg={theme().text}>
+        <b>Knowledge</b>
+      </text>
+      <Show
+        when={
+          pkg()?.repositoryIntelligence ||
+          pkg()?.architectureSummary ||
+          pkg()?.dependencySummary ||
+          pkg()?.documentationSummary ||
+          pkg()?.verificationSummary
+        }
+        fallback={
+          <text fg={theme().textMuted}>
+            <span style={{ fg: theme().success }}>●</span> Ready — knowledge gathering on prompt
+          </text>
+        }
+      >
         <Row label="Repository" value={pkg()!.repositoryIntelligence} theme={theme} />
         <Row label="Architecture" value={pkg()!.architectureSummary} theme={theme} />
         <Row label="Dependencies" value={pkg()!.dependencySummary} theme={theme} />
         <Row label="Documentation" value={pkg()!.documentationSummary} theme={theme} />
         <Row label="Verification" value={pkg()!.verificationSummary} theme={theme} />
-      </box>
-    </Show>
+      </Show>
+    </box>
   )
 }
 
