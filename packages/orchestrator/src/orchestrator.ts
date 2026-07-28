@@ -161,13 +161,9 @@ import { CapabilityMatcher } from "./resources/capability-matcher"
 import { RoutingPolicy } from "./resources/routing-policy"
 import { FallbackEngine } from "./resources/fallback-engine"
 import { SelectionEngine } from "./resources/selection-engine"
+import type { PhaseEntry } from "./types/phase"
 
-export interface PhaseEntry {
-  readonly phase: string
-  readonly durationMs: number
-  readonly result: string
-  readonly error: string | undefined
-}
+export type { PhaseEntry }
 
 export interface Interface {
   readonly orchestrate: (input: OrchestrationInput) => Effect.Effect<OrchestrationDecision>
@@ -448,10 +444,14 @@ const layer = Layer.effect(
     })
   }),
 ).pipe(
-  Layer.provide(
+  // provideMerge keeps classifier/dispatcher/runtime available to pipeline stages
+  Layer.provideMerge(
     Layer.provideMerge(
       Layer.mergeAll(
         // --- Tier 0: pure leaf services (no cross-deps) ---
+        TaskClassifier.layer,
+        AgentDispatcher.layer,
+        ModelSelector.layer,
         SpecialistRegistry.layer,
         KnowledgePlanner.layer,
         ExecutionGraphBuilder.layer,

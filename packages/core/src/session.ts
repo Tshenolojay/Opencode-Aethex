@@ -592,7 +592,7 @@ const resolvePrompt = (input: PromptInput.Prompt) =>
 export const node = makeGlobalNode({
   service: Service,
   layer: layer.pipe(
-    Layer.provide(SessionIntegration.layer.pipe(Layer.provide(OrchestratorService.layer))),
+    Layer.provideMerge(SessionIntegration.layer.pipe(Layer.provideMerge(OrchestratorService.layer))),
     Layer.orDie,
   ),
   deps: [

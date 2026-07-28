@@ -21,9 +21,15 @@ export const Info = Schema.Struct({
   specialists: optional(Schema.Array(Schema.Struct({
     name: Schema.String,
     role: optional(Schema.String),
+    status: optional(Schema.String),
   }))),
   planningSummary: optional(Schema.String),
   consensusSummary: optional(Schema.String),
+  needsOrchestration: optional(Schema.Boolean),
+  confidenceFactors: optional(Schema.Array(Schema.Struct({
+    name: Schema.String,
+    value: Schema.Number,
+  }))),
   // Models panel
   provider: optional(Schema.String),
   model: optional(Schema.String),
@@ -80,6 +86,7 @@ export const SpecialistPlanUpdated = Event.define({
     specialists: optional(Schema.Array(Schema.Struct({
       name: Schema.String,
       role: optional(Schema.String),
+      status: optional(Schema.String),
     }))),
     consensusSummary: optional(Schema.String),
   },

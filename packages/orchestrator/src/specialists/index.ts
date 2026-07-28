@@ -1,5 +1,6 @@
 export * as SpecialistProfiles from "./profiles"
 export * as SpecialistRegistry from "./registry"
+export * as SpecialistBootstrap from "./bootstrap"
 export * as BaseSpecialist from "./base-specialist"
 export * as SearchSpecialist from "./search-specialist"
 export * as RepositorySpecialist from "./repository-specialist"

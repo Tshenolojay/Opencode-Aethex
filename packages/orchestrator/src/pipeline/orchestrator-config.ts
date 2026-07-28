@@ -1,5 +1,6 @@
 export const Config = {
   minimumConfidence: 0.65,
+  mediumConfidence: 0.35,
   maxSpecialists: 4,
   compressionMaxSection: 1000,
   compressionMaxTotal: 2400,

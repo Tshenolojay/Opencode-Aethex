@@ -33,11 +33,16 @@ export function LeftSidebar(props: {
       .toSorted((a, b) => b.time.updated - a.time.updated)
       .slice(0, 100),
   )
-  const activeID = createMemo(() => (route.data.type === "session" ? route.data.sessionID : undefined))
+  const activeID = createMemo(() => props.sessionID ?? (route.data.type === "session" ? route.data.sessionID : undefined))
   const workspaces = createMemo(() =>
     Flag.OPENCODE_EXPERIMENTAL_WORKSPACES ? project.workspace.list() : [],
   )
   const activeWorkspace = createMemo(() => project.workspace.current() ?? "")
+  const activeExecution = createMemo(() => {
+    const id = activeID()
+    if (!id) return undefined
+    return sync.data.execution_package[id]
+  })
 
   return (
     <box
@@ -62,6 +67,14 @@ export function LeftSidebar(props: {
           </text>
         </Show>
       </box>
+      <Show when={activeExecution()?.confidence}>
+        <text fg={theme.textMuted}>
+          Orchestrator: <span fg={theme.text}>{activeExecution()!.confidence}</span>
+          <Show when={(activeExecution()!.specialists?.length ?? 0) > 0}>
+            <span fg={theme.warning}> · {activeExecution()!.specialists!.length} specialists</span>
+          </Show>
+        </text>
+      </Show>
       <scrollbox
         flexGrow={1}
         scrollAcceleration={scrollAcceleration()}
@@ -91,7 +104,7 @@ export function LeftSidebar(props: {
               >
                 <text fg={activeWorkspace() === ws.id ? theme.text : theme.textMuted}>
                   {activeWorkspace() === ws.id ? "● " : "  "}
-                  {ws.name ?? ws.id}
+                  {Locale.truncate(ws.name ?? ws.id, LEFT_SIDEBAR_WIDTH - 8)}
                 </text>
               </box>
             )}
@@ -102,17 +115,22 @@ export function LeftSidebar(props: {
         <For each={sessions()}>
           {(s) => {
             const selected = createMemo(() => activeID() === s.id)
+            const pkg = createMemo(() => sync.data.execution_package[s.id])
             return (
               <box
                 paddingTop={0}
                 paddingBottom={0}
                 paddingLeft={1}
                 paddingRight={1}
+                backgroundColor={selected() ? theme.backgroundElement : undefined}
                 onMouseUp={() => route.navigate({ type: "session", sessionID: s.id })}
               >
                 <text fg={selected() ? theme.text : theme.textMuted}>
                   {selected() ? "▸ " : "  "}
-                  {Locale.truncate(s.title ?? "Untitled", LEFT_SIDEBAR_WIDTH - 6)}
+                  {Locale.truncate(s.title ?? "Untitled", LEFT_SIDEBAR_WIDTH - 8)}
+                  <Show when={pkg()?.confidence === "low"}>
+                    <span fg={theme.error}> !</span>
+                  </Show>
                 </text>
               </box>
             )

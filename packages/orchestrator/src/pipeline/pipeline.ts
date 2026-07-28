@@ -4,7 +4,7 @@ import { Effect, Schema } from "effect"
 import type { OrchestrationInput, OrchestrationDecision } from "../contracts/service"
 import { TaskClassification as TaskClassificationSchema, type ClassificationResult } from "../classifier/schema"
 import type { ConfidenceLevel, ConfidenceScore } from "../types/confidence"
-import type { PhaseEntry } from "../orchestrator"
+import type { PhaseEntry } from "../types/phase"
 import type { TimingInfo } from "../types/metadata"
 type TaskClassification = Schema.Schema.Type<typeof TaskClassificationSchema>
 import { runFoundationStage } from "./foundation-stage"
@@ -20,6 +20,7 @@ import { runCollaborationStage } from "./collaboration-stage"
 import { runFinalizationStage, type PipelineOutput } from "./finalization-stage"
 import { KnowledgeBundle } from "../knowledge/knowledge"
 import { AgentDispatcher } from "../dispatcher/dispatcher"
+import { Config } from "./orchestrator-config"
 
 export interface PipelineState {
   input: OrchestrationInput
@@ -163,8 +164,7 @@ export function createInitialState(input: OrchestrationInput): PipelineState {
 
 export type StageFn = (state: PipelineState) => Effect.Effect<PipelineState>
 
-const stages: StageFn[] = [
-  runFoundationStage as StageFn,
+const postFoundationStages: StageFn[] = [
   runPlanningStage as StageFn,
   runResourceStage as StageFn,
   runExecutionStage as StageFn,
@@ -176,35 +176,52 @@ const stages: StageFn[] = [
   runCollaborationStage as StageFn,
 ]
 
-export function runAllStages(input: OrchestrationInput): Effect.Effect<PipelineOutput> {
-  return Effect.fn("Pipeline.runAllStages")(function* () {
-    let state = createInitialState(input)
-
-    for (const stage of stages) {
-      const tStage = Date.now()
-      state = yield* stage(state).pipe(
-        Effect.catchIf(() => true, (error: unknown) =>
-          Effect.succeed({
-            ...state,
-            diagnostics: [
-              ...state.diagnostics,
-              { phase: stage.name || "unknown", durationMs: Date.now() - tStage, result: "failed", error: String(error) },
-            ],
-          } as PipelineState)
-        ),
-      )
-    }
-
-    const highConfidence = state.confidenceLevel === "high"
-    if (highConfidence && state.dispatchPlan) {
-      return yield* buildHighConfidenceOutput(state)
-    }
-
-    return yield* runFinalizationStage(state)
-  }) as unknown as Effect.Effect<PipelineOutput, never, never>
+function runStage(stage: StageFn, state: PipelineState): Effect.Effect<PipelineState> {
+  const tStage = Date.now()
+  return stage(state).pipe(
+    // Catch failures and defects (missing late-tier services) so earlier planning survives.
+    Effect.catchCause((cause) =>
+      Effect.succeed({
+        ...state,
+        diagnostics: [
+          ...state.diagnostics,
+          {
+            phase: stage.name || "unknown",
+            durationMs: Date.now() - tStage,
+            result: "failed",
+            error: String(cause),
+          },
+        ],
+      } as PipelineState),
+    ),
+  )
 }
 
+function shouldBypassSpecialists(state: PipelineState): boolean {
+  if (state.confidenceLevel !== "high") return false
+  // Missing score means foundation did not enrich confidence — still honor high level.
+  if (state.confidenceScore === undefined) return true
+  return state.confidenceScore.score >= Config.minimumConfidence
+}
+
+export const runAllStages = Effect.fn("Pipeline.runAllStages")(function* (input: OrchestrationInput) {
+  let state = createInitialState(input)
+
+  // Classify + score confidence first. High confidence skips specialist planning/execution.
+  state = yield* runStage(runFoundationStage as StageFn, state)
+  if (shouldBypassSpecialists(state)) {
+    return yield* buildHighConfidenceOutput(state)
+  }
+
+  for (const stage of postFoundationStages) {
+    state = yield* runStage(stage, state)
+  }
+
+  return yield* runFinalizationStage(state)
+})
+
 function buildHighConfidenceOutput(state: PipelineState): Effect.Effect<PipelineOutput> {
+  const now = Date.now()
   return Effect.succeed({
     decision: {
       needsOrchestration: false,
@@ -224,12 +241,50 @@ function buildHighConfidenceOutput(state: PipelineState): Effect.Effect<Pipeline
       executionGraph: undefined,
       planningPolicy: undefined,
     },
-    timing: state.timing,
+    timing: {
+      ...state.timing,
+      planningEnd: now,
+    },
     diagnostics: [
       ...state.diagnostics,
-      { phase: "total", durationMs: Date.now() - state.timing.startTime, result: "bypass-high-confidence", error: undefined },
+      { phase: "total", durationMs: now - state.timing.startTime, result: "bypass-high-confidence", error: undefined },
     ],
     executionGraph: undefined,
-    executionPackage: state.executionPackage,
+    executionPackage: {
+      ...state.executionPackage,
+      taskClassification: state.classification,
+      classifications: state.classifications,
+      confidence: state.confidenceLevel,
+      confidenceScore: state.confidenceScore,
+      executionNotes: ["High confidence — specialists bypassed"],
+      executionNarrative: {
+        mission: undefined,
+        objective: undefined,
+        taskSummary: state.classification.type,
+        repositoryFindings: undefined,
+        architectureFindings: undefined,
+        dependencyFindings: undefined,
+        documentationFindings: undefined,
+        verificationFindings: undefined,
+        specialistConsensus: "bypassed — high confidence",
+        risks: undefined,
+        constraints: undefined,
+        unknowns: undefined,
+        criticalFiles: undefined,
+        criticalModules: undefined,
+        recommendedWorkflow: "direct-agent",
+        executionStrategy: "bypass-high-confidence",
+        expectedOutcome: undefined,
+        confidenceSummary: `Confidence ${state.confidenceLevel} (${Math.round((state.confidenceScore?.score ?? 0) * 100)}%)`,
+        teamOverview: undefined,
+        assignedSpecialists: undefined,
+        taskAllocation: undefined,
+        collaborationSummary: undefined,
+        reviewSummary: undefined,
+        capabilitySummary: undefined,
+        remainingQuestions: undefined,
+        fullText: `High confidence bypass for ${state.classification.type}`,
+      },
+    },
   } as PipelineOutput)
 }

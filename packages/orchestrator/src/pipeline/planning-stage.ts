@@ -8,6 +8,7 @@ import { ExecutionGraph as ExecutionGraphBuilder } from "../planner/execution-gr
 import { PlanningPolicy as PlanningPolicyService } from "../planner/planning-policy"
 import { PlanningMemory } from "../planner/planning-memory"
 import { AgentDispatcher } from "../dispatcher/dispatcher"
+import { Config } from "./orchestrator-config"
 
 export const runPlanningStage = Effect.fn("Pipeline.planning")(function* (state: PipelineState) {
   const selector = yield* ModelSelector.Service
@@ -54,15 +55,6 @@ export const runPlanningStage = Effect.fn("Pipeline.planning")(function* (state:
   const capPlanMs = Date.now() - tCapPlan
   yield* memory.updateCapabilityPlan(capabilityPlan)
 
-  const tSpecLookup = Date.now()
-  const specialistMatches = yield* specialistRegistry.filterByCapabilities(capabilityPlan.required, {
-    taskTypes: undefined,
-    requiredCapabilities: undefined,
-    minConfidence: undefined,
-    maxSpecialists: 4,
-  })
-  const specLookupMs = Date.now() - tSpecLookup
-
   const policy = yield* policyService.evaluate({
     classification: state.classification,
     classifications: state.classifications,
@@ -73,6 +65,44 @@ export const runPlanningStage = Effect.fn("Pipeline.planning")(function* (state:
   })
   yield* memory.updatePolicy(policy)
 
+  const tSpecLookup = Date.now()
+  let specialistMatches = policy.requiresSpecialists
+    ? yield* specialistRegistry.filterByCapabilities(capabilityPlan.required, {
+        taskTypes: undefined,
+        requiredCapabilities: capabilityPlan.required,
+        minConfidence: state.confidenceLevel,
+        maxSpecialists: policy.maxSpecialists || Config.maxSpecialists,
+      })
+    : []
+
+  // Low/medium confidence that requires specialists must not leave an empty match set.
+  if (policy.requiresSpecialists && specialistMatches.length === 0) {
+    specialistMatches = yield* specialistRegistry.filterByTaskType(state.classification.type, {
+      taskTypes: [state.classification.type],
+      requiredCapabilities: capabilityPlan.required,
+      minConfidence: state.confidenceLevel,
+      maxSpecialists: policy.maxSpecialists || Config.maxSpecialists,
+    })
+  }
+
+  if (policy.requiresSpecialists && specialistMatches.length === 0) {
+    const all = yield* specialistRegistry.getAll()
+    const forced = all.filter(
+      (profile) =>
+        profile.id === "specialist/planning" ||
+        profile.id === "specialist/context" ||
+        (state.classification.requiresSearch && profile.id === "specialist/search") ||
+        (state.classification.requiresVerification && profile.id === "specialist/verification") ||
+        (state.classification.requiresDependencyGraph && profile.id === "specialist/dependency"),
+    )
+    specialistMatches = forced.slice(0, policy.maxSpecialists || Config.maxSpecialists).map((specialist) => ({
+      specialist,
+      matchScore: 1,
+      matchedCapabilities: specialist.requiredCapabilities as import("../types/capability").Capability[],
+    }))
+  }
+  const specLookupMs = Date.now() - tSpecLookup
+
   const tSpecPlan = Date.now()
   const specialistPlan = yield* dispatcher.planSpecialists({
     taskType: state.classification.type,
@@ -82,7 +112,7 @@ export const runPlanningStage = Effect.fn("Pipeline.planning")(function* (state:
     requiresContext: state.classification.requiresContext,
     requiresDependencyGraph: state.classification.requiresDependencyGraph,
     requiresVerification: state.classification.requiresVerification,
-    maxSpecialists: policy.maxSpecialists,
+    maxSpecialists: policy.requiresSpecialists ? policy.maxSpecialists : 0,
   })
   const specPlanMs = Date.now() - tSpecPlan
   yield* memory.updateSpecialistPlan(specialistPlan)

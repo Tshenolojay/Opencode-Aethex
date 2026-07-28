@@ -745,9 +745,15 @@ export type ExecutionPackage = {
   specialists?: Array<{
     name: string
     role?: string
+    status?: string
   }>
   planningSummary?: string
   consensusSummary?: string
+  needsOrchestration?: boolean
+  confidenceFactors?: Array<{
+    name: string
+    value: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+  }>
   provider?: string
   model?: string
   capabilityMatch?: string

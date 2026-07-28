@@ -122,23 +122,43 @@ const make = Effect.gen(function* () {
   })
 
   const summary = Effect.fn("SessionIntegration.summary")(function* (pkg: ExecutionPackage) {
-    const specialists = pkg.specialistPlan?.selected?.map((match) => ({
-      name: match.specialist?.name ?? "unknown",
-    }))
     const narrative = pkg.executionNarrative
     const routing = pkg.routingMetadata
+    const bypassed = narrative?.executionStrategy === "bypass-high-confidence"
+    const executed = (pkg.runtimeMetrics?.executionDurationMs ?? 0) > 0
+    const specialists = pkg.specialistPlan?.selected?.map((match) => ({
+      name: match.specialist?.name ?? "unknown",
+      role: match.specialist?.purpose ?? match.specialist?.description,
+      status: bypassed ? "bypassed" : executed ? "executed" : "planned",
+    }))
+    const status = bypassed
+      ? "bypassed"
+      : specialists?.length
+        ? executed
+          ? "completed"
+          : "orchestrating"
+        : pkg.executionNotes === undefined
+          ? "idle"
+          : "busy"
+    const confidenceFactors = pkg.confidenceScore?.factors?.map((factor) => ({
+      name: factor.name,
+      value: factor.value,
+    }))
+    const factorNotes = confidenceFactors?.map((factor) => `${factor.name}: ${Math.round(factor.value * 100)}%`)
     return {
       sessionID: pkg.sessionID as ExecutionPackageInfo["sessionID"],
       timestamp: pkg.timestamp,
       currentTask: narrative?.taskSummary ?? pkg.conversationSummary ?? pkg.taskClassification?.type,
       confidence: pkg.confidence,
       confidenceScore: pkg.confidenceScore?.score,
-      status: pkg.executionNotes === undefined ? "idle" : "busy",
+      status,
       progress: pkg.confidenceScore?.score,
       activeWorkflow: narrative?.recommendedWorkflow,
       specialists: specialists?.length ? specialists : undefined,
       planningSummary: pkg.planningPolicy?.label ?? narrative?.executionStrategy,
       consensusSummary: narrative?.specialistConsensus,
+      needsOrchestration: !bypassed && (specialists?.length ?? 0) > 0,
+      confidenceFactors,
       provider: routing?.selectedProviderID,
       model: routing?.selectedModelID,
       capabilityMatch: pkg.capabilityPlan?.reason,
@@ -149,7 +169,12 @@ const make = Effect.gen(function* () {
       dependencySummary: pkg.dependencyIntelligence?.summary ?? narrative?.dependencyFindings,
       documentationSummary: pkg.documentationIntelligence?.summary ?? narrative?.documentationFindings,
       verificationSummary: pkg.verificationIntelligence?.summary ?? narrative?.verificationFindings,
-      recommendations: pkg.executionNotes,
+      recommendations: [
+        ...(pkg.executionNotes ?? []),
+        ...(factorNotes ?? []),
+      ].length
+        ? [...(pkg.executionNotes ?? []), ...(factorNotes ?? [])]
+        : undefined,
       risks: narrative?.risks,
       constraints: narrative?.constraints,
       toolAdvice: pkg.executionIntelligence?.toolAdvice?.suggestedTools,

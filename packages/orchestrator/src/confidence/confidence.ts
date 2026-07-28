@@ -3,6 +3,7 @@ export * as ConfidenceEngine from "./confidence"
 import { Context, Effect, Layer, Schema } from "effect"
 import type { TaskClassification } from "../classifier/schema"
 import type { ConfidenceLevel, ConfidenceFactor, ConfidenceScore } from "../types/confidence"
+import { Config } from "../pipeline/orchestrator-config"
 
 export interface Input {
   readonly classification: TaskClassification
@@ -28,65 +29,29 @@ export interface Interface {
 export class Service extends Context.Service<Service, Interface>()("@opencode/orchestrator/ConfidenceEngine") {}
 
 export function scoreToLevel(score: number): ConfidenceLevel {
-  if (score >= 0.65) return "high"
-  if (score >= 0.35) return "medium"
+  if (score >= Config.minimumConfidence) return "high"
+  if (score >= Config.mediumConfidence) return "medium"
   return "low"
 }
 
-const estimate: Interface["estimate"] = Effect.fn("ConfidenceEngine.estimate")(function* (input) {
-  const { classification } = input
+const typeBias: Record<string, number> = {
+  "general-chat": 0.95,
+  documentation: 0.85,
+  "repository-search": 0.8,
+  "code-generation": 0.7,
+  testing: 0.6,
+  refactoring: 0.5,
+  debugging: 0.45,
+  "bug-fix": 0.4,
+  "dependency-investigation": 0.4,
+  "architecture-design": 0.3,
+  "performance-optimisation": 0.3,
+  "security-review": 0.25,
+}
 
-  const factors: number[] = []
-
-  const typeBias: Record<string, number> = {
-    "general-chat": 0.95,
-    "documentation": 0.85,
-    "repository-search": 0.8,
-    "code-generation": 0.7,
-    "testing": 0.6,
-    "refactoring": 0.5,
-    "debugging": 0.45,
-    "bug-fix": 0.4,
-    "dependency-investigation": 0.4,
-    "architecture-design": 0.3,
-    "performance-optimisation": 0.3,
-    "security-review": 0.25,
-  }
-  factors.push(typeBias[classification.type] ?? 0.5)
-  factors.push(1.0 - classification.complexity * 0.4)
-
-  const repoPenalty = Math.min(input.repositorySize / 100000, 0.3)
-  factors.push(1.0 - repoPenalty)
-
-  const convoPenalty = Math.min(input.conversationLength / 50, 0.2)
-  factors.push(1.0 - convoPenalty)
-
-  if (input.contextAvailable) factors.push(1.1)
-  if (input.filesAttached > 0) factors.push(1.05 + Math.min(input.filesAttached * 0.02, 0.1))
-  if (input.previousToolResults) factors.push(1.05)
-
-  const score = factors.reduce((acc, f) => acc * f, 1.0) / Math.pow(factors.length, factors.length)
-
-  return Schema.decodeSync(Schema.Literals(["high", "medium", "low"] as const))(scoreToLevel(score)) as ConfidenceLevel
-})
-
-const estimateWithScore: Interface["estimateWithScore"] = Effect.fn("ConfidenceEngine.estimateWithScore")(function* (input) {
+function buildFactors(input: InputRich): ConfidenceFactor[] {
   const factors: ConfidenceFactor[] = []
 
-  const typeBias: Record<string, number> = {
-    "general-chat": 0.95,
-    "documentation": 0.85,
-    "repository-search": 0.8,
-    "code-generation": 0.7,
-    "testing": 0.6,
-    "refactoring": 0.5,
-    "debugging": 0.45,
-    "bug-fix": 0.4,
-    "dependency-investigation": 0.4,
-    "architecture-design": 0.3,
-    "performance-optimisation": 0.3,
-    "security-review": 0.25,
-  }
   const bias = typeBias[input.classification.type] ?? 0.5
   factors.push({ name: "task-type-bias", value: bias, weight: 0.25, description: `Task type bias for ${input.classification.type}` })
 
@@ -110,15 +75,50 @@ const estimateWithScore: Interface["estimateWithScore"] = Effect.fn("ConfidenceE
 
   if (input.classifications.length > 1) {
     const classificationConflict = 1.0 - (input.classifications.length - 1) * 0.1
-    factors.push({ name: "classification-conflict", value: Math.max(classificationConflict, 0.5), weight: 0.05, description: "Multiple classifications reduce confidence" })
+    factors.push({
+      name: "classification-conflict",
+      value: Math.max(classificationConflict, 0.5),
+      weight: 0.05,
+      description: "Multiple classifications reduce confidence",
+    })
   }
 
-  const totalWeight = factors.reduce((acc, f) => acc + f.weight, 0)
-  const weightedScore = factors.reduce((acc, f) => acc + f.value * f.weight, 0) / totalWeight
+  return factors
+}
 
-  const level = scoreToLevel(weightedScore)
+function weightedScore(factors: readonly ConfidenceFactor[]): number {
+  const type = factors.find((factor) => factor.name === "task-type-bias")?.value ?? 0.5
+  const complexity = factors.find((factor) => factor.name === "complexity")?.value ?? 0.5
+  const environmental = factors.filter(
+    (factor) => factor.name !== "task-type-bias" && factor.name !== "complexity",
+  )
+  const envWeight = environmental.reduce((acc, factor) => acc + factor.weight, 0)
+  const envScore =
+    envWeight === 0
+      ? 1
+      : environmental.reduce((acc, factor) => acc + factor.value * factor.weight, 0) / envWeight
 
-  return { score: weightedScore, level, factors, factorCount: factors.length }
+  // Type + complexity dominate; environmental factors only soften the score.
+  return Math.min(1, Math.max(0, type * complexity * (0.7 + 0.3 * envScore)))
+}
+
+const estimate: Interface["estimate"] = Effect.fn("ConfidenceEngine.estimate")(function* (input) {
+  const score = weightedScore(
+    buildFactors({
+      ...input,
+      classifications: [],
+      sessionMetadata: undefined,
+      toolHistory: undefined,
+    }),
+  )
+  return Schema.decodeSync(Schema.Literals(["high", "medium", "low"] as const))(scoreToLevel(score)) as ConfidenceLevel
+})
+
+const estimateWithScore: Interface["estimateWithScore"] = Effect.fn("ConfidenceEngine.estimateWithScore")(function* (input) {
+  const factors = buildFactors(input)
+  const score = weightedScore(factors)
+  const level = scoreToLevel(score)
+  return { score, level, factors, factorCount: factors.length }
 })
 
 const layer = Layer.effect(

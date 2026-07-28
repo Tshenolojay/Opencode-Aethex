@@ -322,6 +322,66 @@ export const {
           break
         }
 
+        case "execution.planning.updated": {
+          const current = store.execution_package[event.properties.sessionID]
+          if (!current) break
+          setStore("execution_package", event.properties.sessionID, {
+            ...current,
+            planningSummary: event.properties.summary ?? current.planningSummary,
+            recommendations: event.properties.recommendations ?? current.recommendations,
+            risks: event.properties.risks ?? current.risks,
+            constraints: event.properties.constraints ?? current.constraints,
+          })
+          break
+        }
+
+        case "execution.reasoning.updated": {
+          const current = store.execution_package[event.properties.sessionID]
+          if (!current) break
+          setStore("execution_package", event.properties.sessionID, {
+            ...current,
+            confidence: event.properties.confidence ?? current.confidence,
+            confidenceScore: event.properties.confidenceScore ?? current.confidenceScore,
+          })
+          break
+        }
+
+        case "execution.specialist-plan.updated": {
+          const current = store.execution_package[event.properties.sessionID]
+          if (!current) break
+          setStore("execution_package", event.properties.sessionID, {
+            ...current,
+            specialists: event.properties.specialists ?? current.specialists,
+            consensusSummary: event.properties.consensusSummary ?? current.consensusSummary,
+          })
+          break
+        }
+
+        case "execution.model-selection.updated": {
+          const current = store.execution_package[event.properties.sessionID]
+          if (!current) break
+          setStore("execution_package", event.properties.sessionID, {
+            ...current,
+            provider: event.properties.provider ?? current.provider,
+            model: event.properties.model ?? current.model,
+            capabilityMatch: event.properties.capabilityMatch ?? current.capabilityMatch,
+            routingStrategy: event.properties.routingStrategy ?? current.routingStrategy,
+            fallbackModel: event.properties.fallbackModel ?? current.fallbackModel,
+          })
+          break
+        }
+
+        case "execution.completed": {
+          const current = store.execution_package[event.properties.sessionID]
+          if (!current) break
+          setStore("execution_package", event.properties.sessionID, {
+            ...current,
+            currentTask: event.properties.currentTask ?? current.currentTask,
+            status: event.properties.status ?? current.status,
+          })
+          break
+        }
+
         case "message.updated": {
           touchMessage(event.properties.info.sessionID, event.properties.info.id)
           const messages = store.message[event.properties.info.sessionID]

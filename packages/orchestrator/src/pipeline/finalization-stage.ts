@@ -71,37 +71,42 @@ export const runFinalizationStage = Effect.fn("Pipeline.finalization")(function*
     planningPolicy: state.policy,
   }
 
-  const learningEngine = yield* LearningEngine.Service
+  const learningEngine = yield* Effect.serviceOption(LearningEngine.Service)
 
   const tLearn = Date.now()
-  yield* learningEngine.observeDecision({
-    sessionID: state.input.sessionID,
-    timestamp: Date.now(),
-    decisionType: "planning",
-    decisionLabel: state.policy?.policy ?? "default",
-    expectedOutcome: state.confidenceLevel,
-    actualOutcome: runnerFailed === 0 ? "success" : runnerFailed > runnerCompleted ? "failure" : "partial",
-    outcomeLabel: runnerFailed === 0 ? "success" : runnerFailed > runnerCompleted ? "failure" : "partial",
-    context: { taskType: state.classification.type, complexity: state.classification.complexity },
-    metadata: { specialistCount: state.specialistPlan?.selected.length ?? 0, connectorCount: state.knowledgePlan?.requests.length ?? 0 },
-  })
+  if (learningEngine._tag === "Some") {
+    yield* learningEngine.value.observeDecision({
+      sessionID: state.input.sessionID,
+      timestamp: Date.now(),
+      decisionType: "planning",
+      decisionLabel: state.policy?.policy ?? "default",
+      expectedOutcome: state.confidenceLevel,
+      actualOutcome: runnerFailed === 0 ? "success" : runnerFailed > runnerCompleted ? "failure" : "partial",
+      outcomeLabel: runnerFailed === 0 ? "success" : runnerFailed > runnerCompleted ? "failure" : "partial",
+      context: { taskType: state.classification.type, complexity: state.classification.complexity },
+      metadata: { specialistCount: state.specialistPlan?.selected.length ?? 0, connectorCount: state.knowledgePlan?.requests.length ?? 0 },
+    })
 
-  yield* learningEngine.observeDecision({
-    sessionID: state.input.sessionID,
-    timestamp: Date.now(),
-    decisionType: "workflow",
-    decisionLabel: "orchestration-pipeline",
-    expectedOutcome: "completed",
-    actualOutcome: runnerFailed === 0 ? "completed" : "partial",
-    outcomeLabel: runnerFailed === 0 ? "success" : "failure",
-    context: { taskType: state.classification.type },
-    metadata: { completed: runnerCompleted, failed: runnerFailed },
-  })
+    yield* learningEngine.value.observeDecision({
+      sessionID: state.input.sessionID,
+      timestamp: Date.now(),
+      decisionType: "workflow",
+      decisionLabel: "orchestration-pipeline",
+      expectedOutcome: "completed",
+      actualOutcome: runnerFailed === 0 ? "completed" : "partial",
+      outcomeLabel: runnerFailed === 0 ? "success" : "failure",
+      context: { taskType: state.classification.type },
+      metadata: { completed: runnerCompleted, failed: runnerFailed },
+    })
 
-  yield* learningEngine.runLearningCycle
+    yield* learningEngine.value.runLearningCycle
+  }
 
-  const learningMetrics = yield* LearningMetrics.Service
-  const metrics = yield* learningMetrics.getMetrics()
+  const learningMetrics = yield* Effect.serviceOption(LearningMetrics.Service)
+  const metrics =
+    learningMetrics._tag === "Some"
+      ? yield* learningMetrics.value.getMetrics()
+      : { learningCycleCount: 0, optimizedDecisions: 0 }
   const learnMs = Date.now() - tLearn
 
   return {
@@ -109,9 +114,66 @@ export const runFinalizationStage = Effect.fn("Pipeline.finalization")(function*
     timing,
     diagnostics: [
       ...diagnostics,
-      { phase: "learning-cycle", durationMs: learnMs, result: `cycle=${metrics.learningCycleCount} optimized=${metrics.optimizedDecisions}`, error: undefined },
+      {
+        phase: "learning-cycle",
+        durationMs: learnMs,
+        result:
+          learningEngine._tag === "Some"
+            ? `cycle=${metrics.learningCycleCount} optimized=${metrics.optimizedDecisions}`
+            : "learning-deferred",
+        error: undefined,
+      },
     ],
     executionGraph: undefined,
-    executionPackage: state.executionPackage,
+    executionPackage: {
+      ...state.executionPackage,
+      taskClassification: state.classification,
+      classifications: state.classifications,
+      confidence: state.confidenceLevel,
+      confidenceScore: state.confidenceScore,
+      capabilityPlan: state.capabilityPlan ?? state.executionPackage.capabilityPlan,
+      specialistPlan: state.specialistPlan ?? state.executionPackage.specialistPlan,
+      knowledgePlan: state.knowledgePlan ?? state.executionPackage.knowledgePlan,
+      dispatchPlan: state.dispatchPlan ?? state.executionPackage.dispatchPlan,
+      planningPolicy: state.policy ?? state.executionPackage.planningPolicy,
+      executionGraph: state.executionGraph ?? state.executionPackage.executionGraph,
+      knowledgeBundle: state.knowledgeBundle,
+      executionNotes:
+        state.executionPackage.executionNotes ??
+        (state.specialistPlan?.selected.length
+          ? [`Activated ${state.specialistPlan.selected.length} specialist(s) for ${state.classification.type}`]
+          : undefined),
+      executionNarrative: state.executionPackage.executionNarrative ?? {
+        mission: undefined,
+        objective: undefined,
+        taskSummary: state.classification.type,
+        repositoryFindings: undefined,
+        architectureFindings: undefined,
+        dependencyFindings: undefined,
+        documentationFindings: undefined,
+        verificationFindings: undefined,
+        specialistConsensus:
+          state.specialistPlan?.selected.length
+            ? `Planned: ${state.specialistPlan.selected.map((m) => m.specialist.name).join(", ")}`
+            : undefined,
+        risks: undefined,
+        constraints: undefined,
+        unknowns: undefined,
+        criticalFiles: undefined,
+        criticalModules: undefined,
+        recommendedWorkflow: state.policy?.label,
+        executionStrategy: state.policy?.policy,
+        expectedOutcome: undefined,
+        confidenceSummary: `Confidence ${state.confidenceLevel} (${Math.round((state.confidenceScore?.score ?? 0) * 100)}%)`,
+        teamOverview: undefined,
+        assignedSpecialists: state.specialistPlan?.selected.map((m) => m.specialist.name),
+        taskAllocation: undefined,
+        collaborationSummary: undefined,
+        reviewSummary: undefined,
+        capabilitySummary: state.capabilityPlan?.reason,
+        remainingQuestions: undefined,
+        fullText: `Orchestration for ${state.classification.type} at ${state.confidenceLevel} confidence`,
+      },
+    },
   } as PipelineOutput
 })
