@@ -16,6 +16,7 @@ import { ConfidenceLevel } from "./types/confidence"
 import type { TimingInfo } from "./types/metadata"
 import { CapabilityPlanner } from "./planner/capability-planner"
 import { SpecialistRegistry } from "./specialists/registry"
+import { SpecialistBootstrap } from "./specialists/bootstrap"
 import { KnowledgePlanner } from "./planner/knowledge-planner"
 import { PlanningPolicy as PlanningPolicyService } from "./planner/planning-policy"
 import { SpecialistRunner } from "./execution/specialist-runner"
@@ -444,16 +445,20 @@ const layer = Layer.effect(
     })
   }),
 ).pipe(
-  // provideMerge keeps classifier/dispatcher/runtime available to pipeline stages
+  // provideMerge is binary-only. Fold later tiers onto earlier ones so each can see
+  // prior services and RuntimeManager/SpecialistRunner remain in the final context.
+  // SpecialistBootstrap runs against that shared registry so executables are discoverable.
   Layer.provideMerge(
-    Layer.provideMerge(
-      Layer.mergeAll(
-        // --- Tier 0: pure leaf services (no cross-deps) ---
-        TaskClassifier.layer,
-        AgentDispatcher.layer,
-        ModelSelector.layer,
-        SpecialistRegistry.layer,
-        KnowledgePlanner.layer,
+    SpecialistBootstrap.layer.pipe(
+      Layer.provideMerge(
+        [
+          Layer.mergeAll(
+            // --- Tier 0: pure leaf services (no cross-deps) ---
+            TaskClassifier.layer,
+            AgentDispatcher.layer,
+            ModelSelector.layer,
+            SpecialistRegistry.layer,
+            KnowledgePlanner.layer,
         ExecutionGraphBuilder.layer,
         PlanningPolicyService.layer,
         PlanningMemory.layer,
@@ -549,7 +554,6 @@ const layer = Layer.effect(
         RoutingPolicy.layer,
         FallbackEngine.layer,
       ),
-      // --- Tier 1: deps resolved from Tier 0 ---
       Layer.mergeAll(
         ModelCatalog.layer.pipe(Layer.provideMerge(Catalog.layer)),
         ProviderCatalog.layer.pipe(Layer.provideMerge(Catalog.layer)),
@@ -612,7 +616,6 @@ const layer = Layer.effect(
           Layer.provideMerge(Layer.mergeAll(CapabilityMatcher.layer, ResourceEstimator.layer, ResourceProviderHealth.layer, ProviderAvailability.layer, BenchmarkStore.layer, PerformanceMemory.layer, PreferenceManager.layer, RoutingPolicy.layer, FallbackEngine.layer, ModelCatalog.layer, ProviderCatalog.layer)),
         ),
       ),
-      // --- Tier 2: deps resolved from Tiers 0..1 ---
       Layer.mergeAll(
         ReviewManager.layer.pipe(Layer.provideMerge(ReviewPipelineService.layer)),
         ReasoningBuilder.layer.pipe(
@@ -631,7 +634,6 @@ const layer = Layer.effect(
           Layer.provideMerge(Layer.mergeAll(CapabilityRegistry.layer, SelectionEngine.layer, SelectionPolicies.layer)),
         ),
       ),
-      // --- Tier 3: deps resolved from Tiers 0..2 ---
       Layer.mergeAll(
         CollaborationEngineService.layer.pipe(
           Layer.provideMerge(Layer.mergeAll(CollaborationPolicy.layer, CollaborationSessionService.layer, ConsensusEngine.layer, ConflictResolution.layer, DiscussionModerator.layer, PeerReviewEngine.layer, SharedWorkspace.layer, SpecialistCoordinator.layer, SpecialistScoreboard.layer, SpecialistMemory.layer, ReviewManager.layer)),
@@ -643,23 +645,22 @@ const layer = Layer.effect(
           Layer.provideMerge(Layer.mergeAll(ModelSelector.layer, ModelRanking.layer, SelectionPolicies.layer, CapabilityRegistry.layer)),
         ),
       ),
-      // --- Tier 4 ---
       Layer.mergeAll(
         SpecialistExecutor.layer.pipe(
           Layer.provideMerge(Layer.mergeAll(SpecialistRegistry.layer, ModelAssignment.layer)),
         ),
       ),
-      // --- Tier 5 ---
       Layer.mergeAll(
         SpecialistRunner.layer.pipe(
           Layer.provideMerge(Layer.mergeAll(ExecutionScheduler.layer, SpecialistExecutor.layer, FailureRecovery.layer, SpecialistRegistry.layer)),
         ),
       ),
-      // --- Tier 6 ---
       Layer.mergeAll(
         RuntimeManager.layer.pipe(
           Layer.provideMerge(Layer.mergeAll(RuntimeCache.layer, RuntimeMetrics.layer, RuntimeContext.layer, SpecialistRunner.layer, ContextBuilder.layer)),
         ),
+      ),
+    ].reduce((acc, tier) => Layer.provideMerge(tier, acc)),
       ),
     ),
   ),

@@ -96,10 +96,9 @@ function canHandle(taskType: TaskType): boolean {
 }
 
 export const make = Effect.fn("PlanningSpecialist.make")(function* () {
-  const advisor = yield* ExecutionAdvisor.Service
-  const reasoningBuilder = yield* ReasoningBuilder.Service
-
   const execute = Effect.fn("PlanningSpecialist.execute")(function* (execInput: SpecialistExecutionInput) {
+    const advisor = yield* ExecutionAdvisor.Service
+    const reasoningBuilder = yield* ReasoningBuilder.Service
     const startTime = Date.now()
     const collectedKnowledge: CollectedKnowledgeEntry[] = []
     const warnings: string[] = []

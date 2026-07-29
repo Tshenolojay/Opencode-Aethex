@@ -97,10 +97,9 @@ function canHandle(taskType: TaskType): boolean {
 }
 
 export const make = Effect.fn("SearchSpecialist.make")(function* () {
-  const connector = yield* KnowledgeConnector.Service
-  const sourceRegistry = yield* KnowledgeSourceRegistry.Service
-
   const execute = Effect.fn("SearchSpecialist.execute")(function* (execInput: SpecialistExecutionInput) {
+    const connector = yield* KnowledgeConnector.Service
+    const sourceRegistry = yield* KnowledgeSourceRegistry.Service
     const startTime = Date.now()
     const collectedKnowledge: CollectedKnowledgeEntry[] = []
 

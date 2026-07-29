@@ -64,8 +64,11 @@ describe("SessionIntegration confidence → specialists", () => {
     expect((result.summary.specialists?.length ?? 0) > 0).toBe(true)
     expect(result.summary.specialists?.[0]?.role).toBeDefined()
     expect(result.summary.specialists?.[0]?.status).toBeDefined()
+    // Specialist names are OpenCode agent IDs (task tool subagent_type), not display titles.
+    expect(result.summary.specialists?.[0]?.name.includes("/")).toBe(false)
     expect((result.summary.activity?.length ?? 0) > 0).toBe(true)
     expect((result.summary.phases?.length ?? 0) > 0).toBe(true)
+    expect((result.summary.recommendations ?? []).some((line) => line.includes("subagent_type"))).toBe(true)
   })
 
   test("summary exposes bypass activity for high-confidence prompts", async () => {

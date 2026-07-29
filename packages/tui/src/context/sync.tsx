@@ -323,8 +323,10 @@ export const {
         }
 
         case "execution.planning.updated": {
-          const current = store.execution_package[event.properties.sessionID]
-          if (!current) break
+          const current = store.execution_package[event.properties.sessionID] ?? {
+            sessionID: event.properties.sessionID,
+            timestamp: Date.now(),
+          }
           setStore("execution_package", event.properties.sessionID, {
             ...current,
             planningSummary: event.properties.summary ?? current.planningSummary,
@@ -336,8 +338,10 @@ export const {
         }
 
         case "execution.reasoning.updated": {
-          const current = store.execution_package[event.properties.sessionID]
-          if (!current) break
+          const current = store.execution_package[event.properties.sessionID] ?? {
+            sessionID: event.properties.sessionID,
+            timestamp: Date.now(),
+          }
           setStore("execution_package", event.properties.sessionID, {
             ...current,
             confidence: event.properties.confidence ?? current.confidence,
@@ -347,19 +351,28 @@ export const {
         }
 
         case "execution.specialist-plan.updated": {
-          const current = store.execution_package[event.properties.sessionID]
-          if (!current) break
+          const current = store.execution_package[event.properties.sessionID] ?? {
+            sessionID: event.properties.sessionID,
+            timestamp: Date.now(),
+            status: "orchestrating",
+          }
           setStore("execution_package", event.properties.sessionID, {
             ...current,
             specialists: event.properties.specialists ?? current.specialists,
             consensusSummary: event.properties.consensusSummary ?? current.consensusSummary,
+            needsOrchestration:
+              (event.properties.specialists?.length ?? current.specialists?.length ?? 0) > 0
+                ? true
+                : current.needsOrchestration,
           })
           break
         }
 
         case "execution.model-selection.updated": {
-          const current = store.execution_package[event.properties.sessionID]
-          if (!current) break
+          const current = store.execution_package[event.properties.sessionID] ?? {
+            sessionID: event.properties.sessionID,
+            timestamp: Date.now(),
+          }
           setStore("execution_package", event.properties.sessionID, {
             ...current,
             provider: event.properties.provider ?? current.provider,
@@ -372,8 +385,10 @@ export const {
         }
 
         case "execution.completed": {
-          const current = store.execution_package[event.properties.sessionID]
-          if (!current) break
+          const current = store.execution_package[event.properties.sessionID] ?? {
+            sessionID: event.properties.sessionID,
+            timestamp: Date.now(),
+          }
           setStore("execution_package", event.properties.sessionID, {
             ...current,
             currentTask: event.properties.currentTask ?? current.currentTask,

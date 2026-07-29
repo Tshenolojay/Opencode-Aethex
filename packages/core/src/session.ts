@@ -37,6 +37,10 @@ import { Snapshot } from "./snapshot"
 import { Flag } from "./flag/flag"
 import { SessionIntegration, OrchestratorService } from "@opencode-ai/orchestrator"
 import { ExecutionPackage as ExecutionPackageContract } from "@opencode-ai/schema/execution-package"
+import {
+  getExecutionPackage,
+  setExecutionPackage,
+} from "./session/execution-package-store"
 import { SessionRevert } from "./session/revert"
 import { Revert } from "@opencode-ai/schema/revert"
 import { FSUtil } from "./fs-util"
@@ -47,14 +51,7 @@ export type RevertState = Revert.State
 
 type ExecutionPackageInfo = typeof ExecutionPackageContract.Info.Type
 
-// In-process cache of the latest orchestrator ExecutionPackage summary per session.
-// The orchestrator outputs are intentionally not persisted; this surfaces the most
-// recent package to the runtime event stream and any consumers that ask.
-const executionPackages = new Map<string, ExecutionPackageInfo>()
-
-export function getExecutionPackage(sessionID: string): ExecutionPackageInfo | undefined {
-  return executionPackages.get(sessionID)
-}
+export { getExecutionPackage, latestExecutionPackage } from "./session/execution-package-store"
 
 const getBranch = Effect.fn("V2Session.getBranch")(function* (directory: AbsolutePath) {
   const git = yield* Git.Service
@@ -404,7 +401,6 @@ const layer = Layer.effect(
             )
             if (!SessionInput.equivalent(admitted, expected))
               return yield* new PromptConflictError({ sessionID: input.sessionID, messageID })
-            if (input.resume !== false) yield* execution.wake(admitted.sessionID)
             const messageRows = yield* db
               .select({ id: SessionMessageTable.id })
               .from(SessionMessageTable)
@@ -413,90 +409,103 @@ const layer = Layer.effect(
               .pipe(Effect.orSucceed([]))
             const conversationLength = messageRows.length
             const branch = session === undefined ? undefined : yield* getBranch(session.location.directory)
+            // Orchestrate BEFORE waking the model so confidence/specialists gate and TUI updates live.
             if (!Flag.OPENCODE_DISABLE_ORCHESTRATOR) {
-              yield* pipe(
-                Effect.serviceOption(SessionIntegration.Service),
-                Effect.flatMap(
-                  Option.match({
-                    onNone: () => Effect.void,
-                    onSome: (service) =>
-                      pipe(
-                         service.integrate({
-                          promptText: prompt.text,
-                          sessionID: input.sessionID,
-                          filesAttached: (prompt.files?.length ?? 0) > 0,
-                          conversationLength,
-                          repositorySize: 0,
-                          contextAvailable: session !== undefined,
-                          previousToolResults: false,
-                          sessionMetadata:
-                            session === undefined
-                              ? branch === undefined
-                                ? undefined
-                                : { branch }
-                              : {
-                                  directory: session.location.directory,
-                                  workspaceID: session.location.workspaceID?.toString() ?? "",
-                                  ...(branch === undefined ? {} : { branch }),
-                                },
-                          assistantResponses: undefined,
-                          toolResults: undefined,
-                          projectInfo: session?.location.directory,
-                        }),
-                        Effect.option,
-                        Effect.flatMap((pkg) =>
-                          Option.match(pkg, {
-                            onNone: () => Effect.void,
-                            onSome: (resolved) =>
-                              pipe(
-                                service.summary(resolved),
-                                Effect.flatMap((info) => {
-                                  executionPackages.set(info.sessionID, info)
-                                  return Effect.all([
-                                    events.publish(ExecutionPackageContract.Updated, {
-                                      sessionID: info.sessionID,
-                                      package: info,
-                                    }),
-                                    events.publish(ExecutionPackageContract.PlanningUpdated, {
-                                      sessionID: info.sessionID,
-                                      summary: info.planningSummary,
-                                      recommendations: info.recommendations,
-                                      risks: info.risks,
-                                      constraints: info.constraints,
-                                    }),
-                                    events.publish(ExecutionPackageContract.ReasoningUpdated, {
-                                      sessionID: info.sessionID,
-                                      confidence: info.confidence,
-                                      confidenceScore: info.confidenceScore,
-                                    }),
-                                    events.publish(ExecutionPackageContract.SpecialistPlanUpdated, {
-                                      sessionID: info.sessionID,
-                                      specialists: info.specialists,
-                                      consensusSummary: info.consensusSummary,
-                                    }),
-                                    events.publish(ExecutionPackageContract.ModelSelectionUpdated, {
-                                      sessionID: info.sessionID,
-                                      provider: info.provider,
-                                      model: info.model,
-                                      capabilityMatch: info.capabilityMatch,
-                                      routingStrategy: info.routingStrategy,
-                                      fallbackModel: info.fallbackModel,
-                                    }),
-                                    events.publish(ExecutionPackageContract.ExecutionCompleted, {
-                                      sessionID: info.sessionID,
-                                      currentTask: info.currentTask,
-                                      status: info.status,
-                                    }),
-                                  ])
-                                }),
-                              ),
-                          }),
-                        ),
-                      ),
+              const pending: ExecutionPackageInfo = {
+                sessionID: input.sessionID as ExecutionPackageInfo["sessionID"],
+                timestamp: Date.now(),
+                currentTask: prompt.text.slice(0, 120),
+                status: "classifying",
+                activity: ["Running confidence + specialist planning…"],
+              }
+              setExecutionPackage(input.sessionID, pending)
+              yield* events.publish(ExecutionPackageContract.Updated, {
+                sessionID: input.sessionID,
+                package: pending,
+              })
+
+              const integration = yield* Effect.serviceOption(SessionIntegration.Service)
+              if (integration._tag === "Some") {
+                const outcome = yield* integration.value
+                  .integrate({
+                    promptText: prompt.text,
+                    sessionID: input.sessionID,
+                    filesAttached: (prompt.files?.length ?? 0) > 0,
+                    conversationLength,
+                    repositorySize: 0,
+                    contextAvailable: session !== undefined,
+                    previousToolResults: false,
+                    sessionMetadata:
+                      session === undefined
+                        ? branch === undefined
+                          ? undefined
+                          : { branch }
+                        : {
+                            directory: session.location.directory,
+                            workspaceID: session.location.workspaceID?.toString() ?? "",
+                            ...(branch === undefined ? {} : { branch }),
+                          },
+                    assistantResponses: undefined,
+                    toolResults: undefined,
+                    projectInfo: session?.location.directory,
+                  })
+                  .pipe(
+                    Effect.map((resolved) => ({ ok: true as const, resolved })),
+                    Effect.catchCause((cause) =>
+                      Effect.succeed({ ok: false as const, error: String(cause) }),
+                    ),
+                  )
+
+                const info =
+                  outcome.ok
+                    ? yield* integration.value.summary(outcome.resolved)
+                    : ({
+                        ...pending,
+                        status: "failed",
+                        activity: [`Orchestration error: ${outcome.error}`],
+                        recommendations: [`Orchestration error: ${outcome.error}`],
+                      } satisfies ExecutionPackageInfo)
+
+                setExecutionPackage(info.sessionID, info)
+                yield* Effect.all([
+                  events.publish(ExecutionPackageContract.Updated, {
+                    sessionID: info.sessionID,
+                    package: info,
                   }),
-                ),
-              )
+                  events.publish(ExecutionPackageContract.PlanningUpdated, {
+                    sessionID: info.sessionID,
+                    summary: info.planningSummary,
+                    recommendations: info.recommendations,
+                    risks: info.risks,
+                    constraints: info.constraints,
+                  }),
+                  events.publish(ExecutionPackageContract.ReasoningUpdated, {
+                    sessionID: info.sessionID,
+                    confidence: info.confidence,
+                    confidenceScore: info.confidenceScore,
+                  }),
+                  events.publish(ExecutionPackageContract.SpecialistPlanUpdated, {
+                    sessionID: info.sessionID,
+                    specialists: info.specialists,
+                    consensusSummary: info.consensusSummary,
+                  }),
+                  events.publish(ExecutionPackageContract.ModelSelectionUpdated, {
+                    sessionID: info.sessionID,
+                    provider: info.provider,
+                    model: info.model,
+                    capabilityMatch: info.capabilityMatch,
+                    routingStrategy: info.routingStrategy,
+                    fallbackModel: info.fallbackModel,
+                  }),
+                  events.publish(ExecutionPackageContract.ExecutionCompleted, {
+                    sessionID: info.sessionID,
+                    currentTask: info.currentTask,
+                    status: info.status,
+                  }),
+                ])
+              }
             }
+            if (input.resume !== false) yield* execution.wake(admitted.sessionID)
             return admitted
           }),
         ),

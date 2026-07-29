@@ -132,11 +132,17 @@ const make = Effect.gen(function* () {
     const routing = pkg.routingMetadata
     const bypassed = narrative?.executionStrategy === "bypass-high-confidence"
     const executed = (pkg.runtimeMetrics?.executionDurationMs ?? 0) > 0
-    const specialists = pkg.specialistPlan?.selected?.map((match) => ({
-      name: match.specialist?.name ?? "unknown",
-      role: match.specialist?.purpose ?? match.specialist?.description,
-      status: bypassed ? "bypassed" : executed ? "executed" : "planned",
-    }))
+    const specialists = pkg.specialistPlan?.selected?.map((match) => {
+      const profile = match.specialist
+      const agentID = profile?.id?.startsWith("specialist/")
+        ? profile.id.slice("specialist/".length)
+        : (profile?.id ?? "unknown")
+      return {
+        name: agentID,
+        role: profile?.purpose ?? profile?.description ?? profile?.name,
+        status: bypassed ? "bypassed" : executed ? "executed" : "planned",
+      }
+    })
     const status = bypassed
       ? "bypassed"
       : specialists?.length
@@ -161,11 +167,16 @@ const make = Effect.gen(function* () {
     const serviceNotes = (pkg.executionNotes ?? []).filter(
       (note) => !(note.includes(": ") && note.includes("ms)")),
     )
+    const dispatchNote =
+      specialists?.length && !bypassed
+        ? `Dispatch via task tool subagent_type: ${specialists.map((item) => item.name).join(", ")}`
+        : undefined
     const activity = [
       ...(bypassed ? ["High confidence — specialist pipeline bypassed"] : []),
       ...(specialists?.length
-        ? [`Specialists: ${specialists.map((item) => item.name).join(", ")}`]
+        ? [`Specialists: ${specialists.map((item) => `${item.name} [${item.status}]`).join(", ")}`]
         : []),
+      ...(dispatchNote ? [dispatchNote] : []),
       ...(routing?.selectedProviderID
         ? [`Model: ${routing.selectedProviderID}/${routing.selectedModelID ?? "?"}`]
         : []),
@@ -207,10 +218,11 @@ const make = Effect.gen(function* () {
       documentationSummary: pkg.documentationIntelligence?.summary ?? narrative?.documentationFindings,
       verificationSummary: pkg.verificationIntelligence?.summary ?? narrative?.verificationFindings,
       recommendations: [
+        ...(dispatchNote ? [dispatchNote] : []),
         ...(serviceNotes ?? []),
         ...(factorNotes ?? []),
       ].length
-        ? [...(serviceNotes ?? []), ...(factorNotes ?? [])]
+        ? [...(dispatchNote ? [dispatchNote] : []), ...(serviceNotes ?? []), ...(factorNotes ?? [])]
         : undefined,
       risks: narrative?.risks,
       constraints: narrative?.constraints,

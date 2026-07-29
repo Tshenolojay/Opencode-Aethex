@@ -201,6 +201,92 @@ export const Plugin = define({
         item.system = PROMPT_SUMMARY
         item.permissions.push(...PermissionV2.merge(defaults, [{ action: "*", resource: "*", effect: "deny" }]))
       })
+
+      // Orchestration specialists — registered as OpenCode subagents so the primary
+      // agent can dispatch them via the task tool when confidence requires specialists.
+      for (const specialist of SPECIALIST_AGENTS) {
+        draft.update(AgentV2.ID.make(specialist.id), (item) => {
+          item.description = specialist.description
+          item.system = specialist.system
+          item.mode = "subagent"
+          item.permissions.push(
+            ...PermissionV2.merge(
+              defaults,
+              specialist.readonly
+                ? [
+                    { action: "*", resource: "*", effect: "deny" },
+                    { action: "grep", resource: "*", effect: "allow" },
+                    { action: "glob", resource: "*", effect: "allow" },
+                    { action: "webfetch", resource: "*", effect: "allow" },
+                    { action: "websearch", resource: "*", effect: "allow" },
+                    { action: "read", resource: "*", effect: "allow" },
+                  ]
+                : [{ action: "todowrite", resource: "*", effect: "deny" }],
+              specialist.readonly ? readonlyExternalDirectory : [],
+            ),
+          )
+        })
+      }
     })
   }),
 })
+
+const SPECIALIST_AGENTS = [
+  {
+    id: "search",
+    description:
+      "Orchestration search specialist. Find relevant files, symbols, and patterns across the codebase.",
+    system:
+      "You are the Search Specialist for OpenCode Aethex. Locate relevant files, symbols, and patterns. Prefer Glob/Grep/Read. Return concrete paths and concise findings.",
+    readonly: true,
+  },
+  {
+    id: "repository",
+    description: "Orchestration repository specialist. Map project structure, hotspots, and ownership.",
+    system:
+      "You are the Repository Specialist for OpenCode Aethex. Summarize repository structure, important modules, and hotspots relevant to the task.",
+    readonly: true,
+  },
+  {
+    id: "dependency",
+    description: "Orchestration dependency specialist. Trace package and module dependency impact.",
+    system:
+      "You are the Dependency Specialist for OpenCode Aethex. Trace dependency chains, blast radius, and upgrade/risk implications for the task.",
+    readonly: true,
+  },
+  {
+    id: "documentation",
+    description: "Orchestration documentation specialist. Extract guidance from docs and READMEs.",
+    system:
+      "You are the Documentation Specialist for OpenCode Aethex. Find and summarize relevant documentation, READMEs, and comments that constrain the task.",
+    readonly: true,
+  },
+  {
+    id: "architecture",
+    description: "Orchestration architecture specialist. Analyze design, boundaries, and patterns.",
+    system:
+      "You are the Architecture Specialist for OpenCode Aethex. Analyze system architecture, module boundaries, patterns, and design constraints before changes.",
+    readonly: true,
+  },
+  {
+    id: "verification",
+    description: "Orchestration verification specialist. Plan and validate tests/checks for the task.",
+    system:
+      "You are the Verification Specialist for OpenCode Aethex. Identify how to verify the work: tests, commands, acceptance checks, and residual risks.",
+    readonly: false,
+  },
+  {
+    id: "context",
+    description: "Orchestration context specialist. Compress and prioritize relevant working context.",
+    system:
+      "You are the Context Specialist for OpenCode Aethex. Select the highest-signal files and facts the primary agent needs, and discard noise.",
+    readonly: true,
+  },
+  {
+    id: "planning",
+    description: "Orchestration planning specialist. Produce an execution plan and work breakdown.",
+    system:
+      "You are the Planning Specialist for OpenCode Aethex. Produce a clear ordered plan, risks, and recommended specialist handoffs for the task.",
+    readonly: false,
+  },
+] as const

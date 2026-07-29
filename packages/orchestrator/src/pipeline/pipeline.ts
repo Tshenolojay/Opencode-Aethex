@@ -199,6 +199,10 @@ function runStage(stage: StageFn, state: PipelineState): Effect.Effect<PipelineS
 
 function shouldBypassSpecialists(state: PipelineState): boolean {
   if (state.confidenceLevel !== "high") return false
+  // Capability requirements override high confidence — these need specialist work.
+  if (state.classification.requiresSearch) return false
+  if (state.classification.requiresDependencyGraph) return false
+  if (state.classification.requiresVerification) return false
   // Missing score means foundation did not enrich confidence — still honor high level.
   if (state.confidenceScore === undefined) return true
   return state.confidenceScore.score >= Config.minimumConfidence
