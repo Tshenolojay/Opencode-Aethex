@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "1.18.4",
+  "version": "1.18.5",
   "name": "opencode-aethex",
   "description": "OpenCode Aethex — AI coding agent with intelligent task orchestration. A fork of OpenCode enhanced with an orchestration engine for task classification, confidence estimation, agent dispatch, and prompt augmentation.",
   "type": "module",
