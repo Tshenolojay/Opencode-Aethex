@@ -293,6 +293,15 @@ export function Session() {
     if (leftSidebar() === "auto" && wide()) return true
     return false
   })
+  const executionPackage = createMemo(() => sync.data.execution_package[route.sessionID])
+  createEffect(() => {
+    const pkg = executionPackage()
+    if (!pkg) return
+    if (!(pkg.needsOrchestration || pkg.status === "orchestrating" || pkg.status === "busy")) return
+    if (sidebarVisible()) return
+    setSidebar("auto")
+    setSidebarOpen(true)
+  })
   const showTimestamps = createMemo(() => timestamps() === "show")
   const contentWidth = createMemo(
     () => dimensions().width - (sidebarVisible() ? 42 : 0) - (leftSidebarVisible() ? LEFT_SIDEBAR_WIDTH : 0) - 4,

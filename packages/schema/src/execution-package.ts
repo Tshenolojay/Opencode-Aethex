@@ -30,6 +30,13 @@ export const Info = Schema.Struct({
     name: Schema.String,
     value: Schema.Number,
   }))),
+  // Pipeline activity (orchestration services)
+  phases: optional(Schema.Array(Schema.Struct({
+    name: Schema.String,
+    result: optional(Schema.String),
+    durationMs: optional(Schema.Number),
+  }))),
+  activity: optional(stringArray),
   // Models panel
   provider: optional(Schema.String),
   model: optional(Schema.String),

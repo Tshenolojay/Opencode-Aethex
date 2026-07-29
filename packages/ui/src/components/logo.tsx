@@ -35,8 +35,10 @@ export const Logo = (props: { class?: string }) => {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 234 42"
+      viewBox="0 0 360 42"
       fill="none"
+      aria-label="OpenCode Aethex"
+      role="img"
       classList={{ [props.class ?? ""]: !!props.class }}
     >
       <g>
@@ -57,6 +59,17 @@ export const Logo = (props: { class?: string }) => {
         <path d="M234 24V30H216V24H234Z" fill="var(--icon-weak-base)" />
         <path d="M216 12V18H228V12H216ZM234 24H216V30H234V36H210V6H234V24Z" fill="var(--icon-strong-base)" />
       </g>
+      <text
+        x="250"
+        y="29"
+        fill="var(--icon-strong-base)"
+        font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+        font-size="22"
+        font-weight="650"
+        letter-spacing="0.06em"
+      >
+        Aethex
+      </text>
     </svg>
   )
 }

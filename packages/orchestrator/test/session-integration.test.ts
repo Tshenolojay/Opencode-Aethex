@@ -64,5 +64,32 @@ describe("SessionIntegration confidence → specialists", () => {
     expect((result.summary.specialists?.length ?? 0) > 0).toBe(true)
     expect(result.summary.specialists?.[0]?.role).toBeDefined()
     expect(result.summary.specialists?.[0]?.status).toBeDefined()
+    expect((result.summary.activity?.length ?? 0) > 0).toBe(true)
+    expect((result.summary.phases?.length ?? 0) > 0).toBe(true)
+  })
+
+  test("summary exposes bypass activity for high-confidence prompts", async () => {
+    const result = await run(
+      Effect.gen(function* () {
+        const service = yield* SessionIntegration.Service
+        const pkg = yield* service.integrate({
+          promptText: "hi",
+          sessionID: "ses_bypass_activity",
+          filesAttached: false,
+          conversationLength: 1,
+          repositorySize: 10,
+          contextAvailable: true,
+          previousToolResults: false,
+          sessionMetadata: undefined,
+          assistantResponses: undefined,
+          toolResults: undefined,
+          projectInfo: undefined,
+        })
+        return yield* service.summary(pkg)
+      }),
+    )
+
+    expect(result.status).toBe("bypassed")
+    expect((result.activity ?? []).some((line) => line.toLowerCase().includes("bypass"))).toBe(true)
   })
 })

@@ -28,6 +28,8 @@ export function Navbar(props: { sessionID?: string }) {
   )
   const confidence = createMemo(() => execution()?.confidence)
   const specialistCount = createMemo(() => execution()?.specialists?.length ?? 0)
+  const orchestrationStatus = createMemo(() => execution()?.status)
+  const phaseCount = createMemo(() => execution()?.phases?.length ?? 0)
 
   return (
     <box
@@ -58,8 +60,14 @@ export function Navbar(props: { sessionID?: string }) {
           <Show when={confidence()}>
             <text fg={confidenceColor(confidence(), theme)}>
               conf:{confidence()}
+              <Show when={orchestrationStatus()}>
+                <span fg={theme.textMuted}> · {orchestrationStatus()}</span>
+              </Show>
               <Show when={specialistCount() > 0}>
                 <span fg={theme.textMuted}> · {specialistCount()} spec</span>
+              </Show>
+              <Show when={phaseCount() > 0}>
+                <span fg={theme.textMuted}> · {phaseCount()} svc</span>
               </Show>
             </text>
           </Show>

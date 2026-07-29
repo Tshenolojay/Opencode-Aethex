@@ -15,6 +15,14 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
   const theme = () => props.api.theme.current
   const pkg = createMemo(() => props.api.state.session.execution_package(props.session_id))
   const specialists = createMemo(() => pkg()?.specialists ?? [])
+  const active = createMemo(
+    () =>
+      specialists().length > 0 ||
+      Boolean(pkg()?.planningSummary) ||
+      Boolean(pkg()?.consensusSummary) ||
+      pkg()?.needsOrchestration === false ||
+      (pkg()?.activity?.length ?? 0) > 0,
+  )
 
   return (
     <box>
@@ -22,7 +30,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
         <b>Specialists</b>
       </text>
       <Show
-        when={specialists().length || pkg()?.planningSummary || pkg()?.consensusSummary || pkg()?.needsOrchestration === false}
+        when={active()}
         fallback={
           <text fg={theme().textMuted}>
             <span style={{ fg: theme().success }}>●</span> Ready — specialists will activate on low confidence
@@ -32,6 +40,11 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
         <Show when={pkg()?.needsOrchestration === false && specialists().length === 0}>
           <text fg={theme().textMuted}>
             <span style={{ fg: theme().success }}>●</span> Bypassed — high confidence
+          </text>
+        </Show>
+        <Show when={pkg()?.needsOrchestration && specialists().length > 0}>
+          <text fg={theme().warning}>
+            Orchestrating {specialists().length} specialist{specialists().length === 1 ? "" : "s"}
           </text>
         </Show>
         <For each={specialists()}>

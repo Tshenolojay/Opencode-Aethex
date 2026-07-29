@@ -20,6 +20,15 @@ function List(props: { title: string | undefined; items: readonly string[] | und
 function View(props: { api: TuiPluginApi; session_id: string }) {
   const theme = () => props.api.theme.current
   const pkg = createMemo(() => props.api.state.session.execution_package(props.session_id))
+  const hasContent = createMemo(
+    () =>
+      (pkg()?.recommendations?.length ?? 0) > 0 ||
+      (pkg()?.risks?.length ?? 0) > 0 ||
+      (pkg()?.constraints?.length ?? 0) > 0 ||
+      (pkg()?.toolAdvice?.length ?? 0) > 0 ||
+      (pkg()?.workflowSuggestions?.length ?? 0) > 0 ||
+      (pkg()?.phases?.length ?? 0) > 0,
+  )
 
   return (
     <box>
@@ -27,24 +36,31 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
         <b>Planning</b>
       </text>
       <Show
-        when={
-          (pkg()?.recommendations && pkg()!.recommendations.length > 0) ||
-          (pkg()?.risks && pkg()!.risks.length > 0) ||
-          (pkg()?.constraints && pkg()!.constraints.length > 0) ||
-          (pkg()?.toolAdvice && pkg()!.toolAdvice.length > 0) ||
-          (pkg()?.workflowSuggestions && pkg()!.workflowSuggestions.length > 0)
-        }
+        when={hasContent()}
         fallback={
           <text fg={theme().textMuted}>
             <span style={{ fg: theme().success }}>●</span> Ready — planning active on prompt
           </text>
         }
       >
-        <List title="Recommendations" items={pkg()!.recommendations} theme={theme} />
-        <List title="Risks" items={pkg()!.risks} theme={theme} />
-        <List title="Constraints" items={pkg()!.constraints} theme={theme} />
-        <List title="Tool advice" items={pkg()!.toolAdvice} theme={theme} />
-        <List title="Workflows" items={pkg()!.workflowSuggestions} theme={theme} />
+        <Show when={(pkg()?.phases?.length ?? 0) > 0}>
+          <text fg={theme().textMuted}>Pipeline:</text>
+          <For each={pkg()!.phases ?? []}>
+            {(phase) => (
+              <text fg={theme().text}>
+                {" "}• {phase.name}
+                <Show when={phase.result}>
+                  <span fg={theme().textMuted}> ({phase.result})</span>
+                </Show>
+              </text>
+            )}
+          </For>
+        </Show>
+        <List title="Recommendations" items={pkg()?.recommendations} theme={theme} />
+        <List title="Risks" items={pkg()?.risks} theme={theme} />
+        <List title="Constraints" items={pkg()?.constraints} theme={theme} />
+        <List title="Tool advice" items={pkg()?.toolAdvice} theme={theme} />
+        <List title="Workflows" items={pkg()?.workflowSuggestions} theme={theme} />
       </Show>
     </box>
   )

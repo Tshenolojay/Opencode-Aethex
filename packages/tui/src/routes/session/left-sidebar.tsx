@@ -68,12 +68,27 @@ export function LeftSidebar(props: {
         </Show>
       </box>
       <Show when={activeExecution()?.confidence}>
-        <text fg={theme.textMuted}>
-          Orchestrator: <span fg={theme.text}>{activeExecution()!.confidence}</span>
+        <box gap={0}>
+          <text fg={theme.textMuted}>
+            Orchestrator: <span fg={theme.text}>{activeExecution()!.confidence}</span>
+            <Show when={activeExecution()!.status}>
+              <span fg={theme.warning}> · {activeExecution()!.status}</span>
+            </Show>
+          </text>
           <Show when={(activeExecution()!.specialists?.length ?? 0) > 0}>
-            <span fg={theme.warning}> · {activeExecution()!.specialists!.length} specialists</span>
+            <text fg={theme.warning}>
+              {activeExecution()!.specialists!.length} specialists
+              <Show when={activeExecution()!.currentTask}>
+                <span fg={theme.textMuted}> · {Locale.truncate(activeExecution()!.currentTask!, 18)}</span>
+              </Show>
+            </text>
           </Show>
-        </text>
+          <Show when={(activeExecution()!.phases?.length ?? 0) > 0}>
+            <text fg={theme.textMuted}>
+              {activeExecution()!.phases!.length} services active
+            </text>
+          </Show>
+        </box>
       </Show>
       <scrollbox
         flexGrow={1}

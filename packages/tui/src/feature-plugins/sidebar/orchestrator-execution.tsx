@@ -21,6 +21,12 @@ function confidenceColor(level: string | undefined, theme: () => any) {
   return theme().text
 }
 
+function statusColor(status: string | undefined, theme: () => any) {
+  if (status === "completed" || status === "bypassed") return theme().success
+  if (status === "orchestrating" || status === "busy") return theme().warning
+  return theme().textMuted
+}
+
 function View(props: { api: TuiPluginApi; session_id: string }) {
   const theme = () => props.api.theme.current
   const pkg = createMemo(() => props.api.state.session.execution_package(props.session_id))
@@ -29,6 +35,8 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
     if (value === undefined) return undefined
     return `${Math.round(Number(value) * 100)}%`
   })
+  const phases = createMemo(() => pkg()?.phases ?? [])
+  const activity = createMemo(() => pkg()?.activity ?? [])
 
   return (
     <box>
@@ -55,9 +63,14 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
             Score: <span fg={confidenceColor(pkg()!.confidence, theme)}>{score()}</span>
           </text>
         </Show>
-        <Row label="Status" value={pkg()!.status} theme={theme} />
+        <text fg={theme().textMuted}>
+          Status: <span fg={statusColor(pkg()!.status, theme)}>{pkg()!.status ?? "idle"}</span>
+        </text>
         <Show when={pkg()!.needsOrchestration}>
           <text fg={theme().warning}>Specialists required</text>
+        </Show>
+        <Show when={pkg()!.needsOrchestration === false && pkg()!.status === "bypassed"}>
+          <text fg={theme().success}>Pipeline bypassed — high confidence</text>
         </Show>
         <Row label="Workflow" value={pkg()!.activeWorkflow} theme={theme} />
         <Show when={(pkg()!.confidenceFactors?.length ?? 0) > 0}>
@@ -67,6 +80,33 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
               <text fg={theme().textMuted}>
                 {"  "}
                 {factor.name}: <span fg={theme().text}>{Math.round(Number(factor.value) * 100)}%</span>
+              </text>
+            )}
+          </For>
+        </Show>
+        <Show when={activity().length > 0}>
+          <text fg={theme().textMuted}>Activity:</text>
+          <For each={activity().slice(0, 8)}>
+            {(line) => (
+              <text fg={theme().text}>
+                {"  "}• {line}
+              </text>
+            )}
+          </For>
+        </Show>
+        <Show when={phases().length > 0}>
+          <text fg={theme().textMuted}>Services:</text>
+          <For each={phases().slice(0, 12)}>
+            {(phase) => (
+              <text fg={theme().textMuted}>
+                {"  "}
+                <span fg={theme().warning}>●</span> {phase.name}
+                <Show when={phase.result}>
+                  <span fg={theme().text}> — {phase.result}</span>
+                </Show>
+                <Show when={phase.durationMs !== undefined}>
+                  <span fg={theme().textMuted}> ({phase.durationMs}ms)</span>
+                </Show>
               </text>
             )}
           </For>

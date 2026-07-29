@@ -754,6 +754,12 @@ export type ExecutionPackage = {
     name: string
     value: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
   }>
+  phases?: Array<{
+    name: string
+    result?: string
+    durationMs?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+  }>
+  activity?: Array<string>
   provider?: string
   model?: string
   capabilityMatch?: string
@@ -2964,9 +2970,21 @@ export type ExecutionPackage1 = {
   specialists?: Array<{
     name: string
     role?: string
+    status?: string
   }>
   planningSummary?: string
   consensusSummary?: string
+  needsOrchestration?: boolean
+  confidenceFactors?: Array<{
+    name: string
+    value: number | "NaN" | "Infinity" | "-Infinity"
+  }>
+  phases?: Array<{
+    name: string
+    result?: string
+    durationMs?: number | "NaN" | "Infinity" | "-Infinity"
+  }>
+  activity?: Array<string>
   provider?: string
   model?: string
   capabilityMatch?: string
@@ -3166,9 +3184,21 @@ export type ExecutionPackage2 = {
   specialists?: Array<{
     name: string
     role?: string
+    status?: string
   }>
   planningSummary?: string
   consensusSummary?: string
+  needsOrchestration?: boolean
+  confidenceFactors?: Array<{
+    name: string
+    value: number | "NaN" | "Infinity" | "-Infinity"
+  }>
+  phases?: Array<{
+    name: string
+    result?: string
+    durationMs?: number | "NaN" | "Infinity" | "-Infinity"
+  }>
+  activity?: Array<string>
   provider?: string
   model?: string
   capabilityMatch?: string

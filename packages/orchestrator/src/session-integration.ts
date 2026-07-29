@@ -105,7 +105,7 @@ const make = Effect.gen(function* () {
   })
 
   const integrate = Effect.fn("SessionIntegration.integrate")(function* (input: IntegrationInput) {
-    const { executionPackage } = yield* orchestrator.orchestrateWithContext({
+    const { executionPackage, diagnostics } = yield* orchestrator.orchestrateWithContext({
       promptText: input.promptText,
       sessionID: input.sessionID,
       filesAttached: input.filesAttached,
@@ -118,7 +118,13 @@ const make = Effect.gen(function* () {
       toolResults: input.toolResults,
       projectInfo: input.projectInfo,
     })
-    return executionPackage
+    const phaseNotes = diagnostics
+      .filter((entry) => entry.phase !== "total")
+      .map((entry) => `${entry.phase}: ${entry.result} (${entry.durationMs}ms)`)
+    return {
+      ...executionPackage,
+      executionNotes: [...(executionPackage.executionNotes ?? []), ...phaseNotes],
+    }
   })
 
   const summary = Effect.fn("SessionIntegration.summary")(function* (pkg: ExecutionPackage) {
@@ -145,6 +151,35 @@ const make = Effect.gen(function* () {
       value: factor.value,
     }))
     const factorNotes = confidenceFactors?.map((factor) => `${factor.name}: ${Math.round(factor.value * 100)}%`)
+    const phaseEntries = (pkg.executionNotes ?? [])
+      .filter((note) => note.includes(": ") && note.includes("ms)"))
+      .map((note) => {
+        const match = /^([^:]+): (.+) \((\d+)ms\)$/.exec(note)
+        if (!match) return { name: note, result: undefined, durationMs: undefined }
+        return { name: match[1]!, result: match[2], durationMs: Number(match[3]) }
+      })
+    const serviceNotes = (pkg.executionNotes ?? []).filter(
+      (note) => !(note.includes(": ") && note.includes("ms)")),
+    )
+    const activity = [
+      ...(bypassed ? ["High confidence — specialist pipeline bypassed"] : []),
+      ...(specialists?.length
+        ? [`Specialists: ${specialists.map((item) => item.name).join(", ")}`]
+        : []),
+      ...(routing?.selectedProviderID
+        ? [`Model: ${routing.selectedProviderID}/${routing.selectedModelID ?? "?"}`]
+        : []),
+      ...(pkg.capabilityPlan?.reason ? [`Capabilities: ${pkg.capabilityPlan.reason}`] : []),
+      ...(pkg.knowledgePlan?.requests.length
+        ? [`Knowledge requests: ${pkg.knowledgePlan.requests.length}`]
+        : []),
+      ...serviceNotes,
+      ...phaseEntries.map((entry) =>
+        entry.durationMs === undefined
+          ? entry.name
+          : `${entry.name} → ${entry.result} (${entry.durationMs}ms)`,
+      ),
+    ]
     return {
       sessionID: pkg.sessionID as ExecutionPackageInfo["sessionID"],
       timestamp: pkg.timestamp,
@@ -159,6 +194,8 @@ const make = Effect.gen(function* () {
       consensusSummary: narrative?.specialistConsensus,
       needsOrchestration: !bypassed && (specialists?.length ?? 0) > 0,
       confidenceFactors,
+      phases: phaseEntries.length ? phaseEntries : undefined,
+      activity: activity.length ? activity : undefined,
       provider: routing?.selectedProviderID,
       model: routing?.selectedModelID,
       capabilityMatch: pkg.capabilityPlan?.reason,
@@ -170,10 +207,10 @@ const make = Effect.gen(function* () {
       documentationSummary: pkg.documentationIntelligence?.summary ?? narrative?.documentationFindings,
       verificationSummary: pkg.verificationIntelligence?.summary ?? narrative?.verificationFindings,
       recommendations: [
-        ...(pkg.executionNotes ?? []),
+        ...(serviceNotes ?? []),
         ...(factorNotes ?? []),
       ].length
-        ? [...(pkg.executionNotes ?? []), ...(factorNotes ?? [])]
+        ? [...(serviceNotes ?? []), ...(factorNotes ?? [])]
         : undefined,
       risks: narrative?.risks,
       constraints: narrative?.constraints,
