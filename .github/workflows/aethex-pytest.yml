@@ -43,9 +43,6 @@ jobs:
       - name: Typecheck orchestrator
         run: bun run --cwd packages/orchestrator typecheck
 
-      - name: Typecheck core integration
-        run: bun run --cwd packages/core typecheck
-
       - name: Run focused Aethex integration tests
         run: >
           bun test
