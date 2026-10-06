@@ -20,7 +20,17 @@ export interface ProviderData {
   readonly disabled?: boolean
 }
 
+export interface RuntimeCatalogSnapshot {
+  readonly providers: readonly ProviderData[]
+  readonly models: readonly ModelData[]
+  readonly defaultModel?: {
+    readonly providerID: string
+    readonly modelID: string
+  }
+}
+
 export interface Interface {
+  readonly replace: (snapshot: RuntimeCatalogSnapshot) => Effect.Effect<void>
   readonly provider: {
     readonly get: (providerID: string) => Effect.Effect<ProviderData | undefined>
     readonly all: () => Effect.Effect<ProviderData[]>
@@ -44,15 +54,20 @@ const layer = Layer.effect(
     let models: ModelData[] = []
     let defaultModel: ModelData | undefined
 
-    const update = (fn: (draft: { readonly providers: ProviderData[]; readonly models: ModelData[]; readonly defaultModel: ModelData | undefined }) => void) => {
-      const draft = { providers, models, defaultModel }
-      fn(draft)
-      providers = draft.providers
-      models = draft.models
-      defaultModel = draft.defaultModel
-    }
+    const replace: Interface["replace"] = Effect.fn("Catalog.replace")(function* (snapshot) {
+      providers = [...snapshot.providers]
+      models = [...snapshot.models]
+      defaultModel = snapshot.defaultModel
+        ? models.find(
+            (model) =>
+              model.providerID === snapshot.defaultModel?.providerID &&
+              model.id === snapshot.defaultModel?.modelID,
+          )
+        : undefined
+    })
 
     return Service.of({
+      replace,
       provider: {
         get: (id) => Effect.succeed(providers.find((p) => p.id === id)),
         all: () => Effect.succeed(providers),
