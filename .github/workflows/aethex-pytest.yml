@@ -28,3 +28,30 @@ jobs:
 
       - name: Verify Aethex orchestrator integration contracts
         run: python3 -m pytest tests/aethex/test_orchestrator_integration.py -q
+
+
+  orchestrator-typescript:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Setup Bun and dependencies
+        uses: ./.github/actions/setup-bun
+
+      - name: Typecheck orchestrator
+        run: bun run --cwd packages/orchestrator typecheck
+
+      - name: Typecheck core integration
+        run: bun run --cwd packages/core typecheck
+
+      - name: Run focused Aethex integration tests
+        run: >
+          bun test
+          packages/orchestrator/test/session-integration.test.ts
+          packages/orchestrator/test/execution-advisor.test.ts
+          packages/orchestrator/test/resource-selection.test.ts
+          packages/core/test/tool-task.test.ts
+          packages/core/test/system-context-orchestration.test.ts
+          packages/core/test/agent.test.ts
