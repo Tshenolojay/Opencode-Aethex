@@ -44,6 +44,7 @@ import {
 import { SessionRevert } from "./session/revert"
 import { Revert } from "@opencode-ai/schema/revert"
 import { FSUtil } from "./fs-util"
+import { FileSystem } from "./filesystem"
 import { SessionDurable } from "@opencode-ai/schema/durable-event-manifest"
 
 export const RevertState = Revert.State
@@ -401,14 +402,59 @@ const layer = Layer.effect(
             )
             if (!SessionInput.equivalent(admitted, expected))
               return yield* new PromptConflictError({ sessionID: input.sessionID, messageID })
-            const messageRows = yield* db
-              .select({ id: SessionMessageTable.id })
+            const countRow = yield* db
+              .select({ count: sql<number>`count(*)` })
               .from(SessionMessageTable)
-              .where(eq(SessionMessageTable.session_id, session?.id ?? input.sessionID))
+              .where(eq(SessionMessageTable.session_id, input.sessionID))
+              .get()
+              .pipe(Effect.orSucceed(undefined))
+            const conversationLength = Number(countRow?.count ?? 0)
+            const recentRows = yield* db
+              .select()
+              .from(SessionMessageTable)
+              .where(eq(SessionMessageTable.session_id, input.sessionID))
+              .orderBy(desc(SessionMessageTable.seq))
+              .limit(24)
               .all()
               .pipe(Effect.orSucceed([]))
-            const conversationLength = messageRows.length
-            const branch = session === undefined ? undefined : yield* getBranch(session.location.directory)
+            const recentMessages = (
+              yield* Effect.forEach(recentRows.toReversed(), (row) => decode(row).pipe(Effect.option))
+            ).flatMap((message) => (Option.isSome(message) ? [message.value] : []))
+            const assistantResponses = recentMessages
+              .filter((message): message is SessionMessage.Assistant => message.type === "assistant")
+              .flatMap((message) =>
+                message.content.flatMap((part) => (part.type === "text" && part.text.trim() ? [part.text] : [])),
+              )
+              .slice(-8)
+            const toolResults = recentMessages
+              .flatMap((message) => {
+                if (message.type === "shell") return message.output.trim() ? [message.output] : []
+                if (message.type !== "assistant") return []
+                return message.content.flatMap((part) => {
+                  if (part.type !== "tool") return []
+                  if (part.state.status !== "completed" && part.state.status !== "error") return []
+                  const text = part.state.content
+                    .flatMap((item) => (item.type === "text" && item.text.trim() ? [item.text] : []))
+                    .join("\n")
+                  if (text) return [text]
+                  if (part.state.status === "error") return [part.state.error.message]
+                  return []
+                })
+              })
+              .slice(-8)
+            const branch = yield* getBranch(session.location.directory)
+            const repositoryEntries = yield* Effect.gen(function* () {
+              const filesystem = yield* FileSystem.Service
+              return yield* filesystem.glob(new FileSystem.GlobInput({ pattern: "**/*", limit: 100_001 }))
+            }).pipe(
+              Effect.provide(locations.get(session.location)),
+              Effect.orSucceed([]),
+            )
+            const repositorySize = repositoryEntries.length
+            const contextAvailable =
+              repositorySize > 0 ||
+              recentMessages.length > 0 ||
+              (prompt.files?.length ?? 0) > 0
             // Orchestrate BEFORE waking the model so confidence/specialists gate and TUI updates live.
             if (!Flag.OPENCODE_DISABLE_ORCHESTRATOR) {
               const pending: ExecutionPackageInfo = {
@@ -432,22 +478,23 @@ const layer = Layer.effect(
                     sessionID: input.sessionID,
                     filesAttached: (prompt.files?.length ?? 0) > 0,
                     conversationLength,
-                    repositorySize: 0,
-                    contextAvailable: session !== undefined,
-                    previousToolResults: false,
-                    sessionMetadata:
-                      session === undefined
-                        ? branch === undefined
-                          ? undefined
-                          : { branch }
-                        : {
-                            directory: session.location.directory,
-                            workspaceID: session.location.workspaceID?.toString() ?? "",
-                            ...(branch === undefined ? {} : { branch }),
-                          },
-                    assistantResponses: undefined,
-                    toolResults: undefined,
-                    projectInfo: session?.location.directory,
+                    repositorySize,
+                    contextAvailable,
+                    previousToolResults: toolResults.length > 0,
+                    sessionMetadata: {
+                      directory: session.location.directory,
+                      workspaceID: session.location.workspaceID?.toString() ?? "",
+                      repositorySize: String(repositorySize),
+                      conversationLength: String(conversationLength),
+                      ...(branch === undefined ? {} : { branch }),
+                    },
+                    assistantResponses: assistantResponses.length > 0 ? assistantResponses : undefined,
+                    toolResults: toolResults.length > 0 ? toolResults : undefined,
+                    projectInfo: [
+                      `directory=${session.location.directory}`,
+                      branch === undefined ? undefined : `branch=${branch}`,
+                      `repositoryFiles=${repositorySize}`,
+                    ].filter((value): value is string => value !== undefined).join("\n"),
                   })
                   .pipe(
                     Effect.map((resolved) => ({ ok: true as const, resolved })),
