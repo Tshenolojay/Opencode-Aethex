@@ -22,20 +22,29 @@ function render(sessionID: SessionSchema.ID): string | undefined {
   }
 
   const specialists = pkg.specialists ?? []
-  const agentNames = specialists.map((item) => {
-    const id = item.name.startsWith("specialist/") ? item.name.slice("specialist/".length) : item.name
+  const normalizeAgent = (name: string) => {
+    const id = name.startsWith("specialist/") ? name.slice("specialist/".length) : name
     return id.toLowerCase().replace(/\s+/g, "-")
-  })
+  }
+  const plannedAgents = specialists
+    .filter((item) => item.status === undefined || item.status === "planned")
+    .map((item) => normalizeAgent(item.name))
+  const executedAgents = specialists
+    .filter((item) => item.status === "executed" || item.status === "completed")
+    .map((item) => normalizeAgent(item.name))
 
   return [
     "<orchestration>",
-    "OpenCode Aethex orchestration has planned specialist agents for this prompt.",
+    "OpenCode Aethex orchestration is active for this prompt.",
     `Confidence: ${pkg.confidence ?? "unknown"}${pkg.confidenceScore !== undefined ? ` (${Math.round(Number(pkg.confidenceScore) * 100)}%)` : ""}`,
     `Status: ${pkg.status ?? "planned"}`,
     pkg.currentTask ? `Task: ${pkg.currentTask}` : undefined,
-    agentNames.length ? `Planned specialists: ${agentNames.join(", ")}` : undefined,
-    "Use specialist agents only when a task/subagent execution tool is actually available in this runtime. Do not claim a specialist executed unless a child-agent result exists.",
-    ...(pkg.activity ?? []).slice(0, 8).map((line) => `- ${line}`),
+    plannedAgents.length ? `Specialists still required: ${plannedAgents.join(", ")}` : undefined,
+    executedAgents.length ? `Specialists already executed: ${executedAgents.join(", ")}` : undefined,
+    plannedAgents.length
+      ? "Before completing the user request, dispatch each still-required specialist with the task tool using the exact subagent_type shown above. Use the current user task plus the specialist role as the task prompt. Consume the returned child-agent result before proceeding. Do not claim execution from a plan alone."
+      : "Do not re-run specialists already marked executed unless new evidence makes another run necessary.",
+    ...(pkg.activity ?? []).slice(-8).map((line) => `- ${line}`),
     "</orchestration>",
   ]
     .filter(Boolean)
