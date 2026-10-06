@@ -158,12 +158,20 @@ function classifyText(text: string): { type: TaskType; complexity: number; requi
 const classifyRich: Interface["classifyRich"] = Effect.fn("TaskClassifier.classifyRich")(function* (input) {
   const signalTexts = input.signals.map((s) => ({ signal: s.signal, text: s.text.toLowerCase(), weight: s.weight }))
 
-  const combinedText = signalTexts.map((s) => s.text).join(" ")
-  const primary = classifyText(combinedText)
+  // The current user prompt defines the primary task. Historical assistant/tool/project
+  // context may add secondary classifications, but must never silently replace the
+  // intent of the prompt being executed.
+  const promptSignal = signalTexts.find((signal) => signal.signal === "prompt-text")
+  const primary = classifyText(promptSignal?.text ?? signalTexts[0]?.text ?? "")
+
+  const promptLength = promptSignal?.text.trim().length ?? 0
+  const primaryConfidence = primary.type === "general-chat"
+    ? 0.9
+    : Math.min(0.95, 0.72 + Math.min(promptLength / 400, 0.18))
 
   const results: ClassificationResult[] = [{
     type: primary.type,
-    confidence: 0.8,
+    confidence: primaryConfidence,
     signals: signalTexts.map((s) => ({ signal: s.signal, weight: s.weight })),
     complexity: primary.complexity,
     requiresContext: primary.requiresContext,
@@ -175,6 +183,7 @@ const classifyRich: Interface["classifyRich"] = Effect.fn("TaskClassifier.classi
   const secondaryMatches: Array<{ type: TaskType; confidence: number }> = []
 
   for (const st of signalTexts) {
+    if (st.signal === "prompt-text") continue
     const candidate = classifyText(st.text)
     if (candidate.type !== primary.type && candidate.type !== "general-chat") {
       let conf = st.weight * 0.6
