@@ -24,7 +24,7 @@ function confidenceColor(level: string | undefined, theme: () => any) {
 function statusColor(status: string | undefined, theme: () => any) {
   if (status === "completed" || status === "bypassed" || status === "specialists-complete") return theme().success
   if (status === "failed") return theme().error
-  if (status === "planned" || status === "orchestrating" || status === "busy") return theme().warning
+  if (status === "interrupted" || status === "planned" || status === "orchestrating" || status === "busy") return theme().warning
   return theme().textMuted
 }
 
