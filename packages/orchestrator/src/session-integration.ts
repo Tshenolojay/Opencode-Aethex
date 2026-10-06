@@ -7,6 +7,7 @@ import { ExecutionPackage as ExecutionPackageContract } from "@opencode-ai/schem
 import { OrchestratorService } from "./orchestrator"
 import type { PhaseEntry } from "./orchestrator"
 import type { PipelineProgressHandler } from "./pipeline/pipeline"
+import type { RuntimeCatalogSnapshot } from "./catalog"
 
 type ExecutionPackageInfo = typeof ExecutionPackageContract.Info.Type
 
@@ -33,6 +34,7 @@ export interface IntegrationInput {
   readonly assistantResponses: readonly string[] | undefined
   readonly toolResults: readonly string[] | undefined
   readonly projectInfo: string | undefined
+  readonly runtimeCatalog?: RuntimeCatalogSnapshot
 }
 
 export interface IntegrationResult {
@@ -78,6 +80,7 @@ const make = Effect.gen(function* () {
       assistantResponses: input.assistantResponses,
       toolResults: input.toolResults,
       projectInfo: input.projectInfo,
+      runtimeCatalog: input.runtimeCatalog,
     })
 
     const summary = buildSummary(entries)
@@ -124,6 +127,7 @@ const make = Effect.gen(function* () {
       assistantResponses: input.assistantResponses,
       toolResults: input.toolResults,
       projectInfo: input.projectInfo,
+      runtimeCatalog: input.runtimeCatalog,
     }, onProgress)
     const phaseNotes = diagnostics
       .filter((entry) => entry.phase !== "total")
