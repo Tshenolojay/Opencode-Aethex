@@ -418,7 +418,40 @@ const layer = Layer.effect(
       )
     })
 
-    const run = Effect.fn("SessionRunner.run")(function* (input: {
+    const publishExecutionStatus = Effect.fn("SessionRunner.publishExecutionStatus")(function* (
+      sessionID: SessionSchema.ID,
+      status: "completed" | "failed" | "interrupted",
+    ) {
+      const current = getExecutionPackage(sessionID)
+      if (!current) return
+      const note =
+        status === "completed"
+          ? "Session execution completed"
+          : status === "interrupted"
+            ? "Session execution interrupted"
+            : "Session execution failed"
+      const next = {
+        ...current,
+        timestamp: Date.now(),
+        status,
+        progress: status === "completed" ? 1 : current.progress,
+        activity: [...(current.activity ?? []), note].slice(-12),
+      } satisfies typeof ExecutionPackageContract.Info.Type
+      setExecutionPackage(sessionID, next)
+      yield* events.publish(ExecutionPackageContract.Updated, {
+        sessionID,
+        package: next,
+      })
+      if (status === "completed") {
+        yield* events.publish(ExecutionPackageContract.ExecutionCompleted, {
+          sessionID,
+          currentTask: next.currentTask,
+          status,
+        })
+      }
+    })
+
+    const executeRun = Effect.fn("SessionRunner.executeRun")(function* (input: {
       readonly sessionID: SessionSchema.ID
       readonly force: boolean
     }) {
@@ -442,6 +475,19 @@ const layer = Layer.effect(
         promotion = shouldRun ? "queue" : undefined
       }
     })
+
+    const run = (input: {
+      readonly sessionID: SessionSchema.ID
+      readonly force: boolean
+    }) =>
+      executeRun(input).pipe(
+        Effect.onExit((exit) =>
+          publishExecutionStatus(
+            input.sessionID,
+            exit._tag === "Success" ? "completed" : Cause.hasInterrupts(exit.cause) ? "interrupted" : "failed",
+          ).pipe(Effect.catchCause(() => Effect.void)),
+        ),
+      )
 
     return Service.of({
       run,
