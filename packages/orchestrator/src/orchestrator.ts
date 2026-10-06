@@ -188,6 +188,8 @@ function recordEntry(entries: PhaseEntry[], phase: string, durationMs: number, r
 }
 
 const orchestrate = Effect.fn("OrchestratorService.orchestrate")(function* (input) {
+  const catalog = yield* Catalog.Service
+  if (input.runtimeCatalog) yield* catalog.replace(input.runtimeCatalog)
   const classifier = yield* TaskClassifier.Service
   const confidence = yield* ConfidenceEngine.Service
   const dispatcher = yield* AgentDispatcher.Service
@@ -402,6 +404,8 @@ const orchestrateWithContext = Effect.fn("OrchestratorService.orchestrateWithCon
   input,
   onProgress?: PipelineProgressHandler,
 ) {
+  const catalog = yield* Catalog.Service
+  if (input.runtimeCatalog) yield* catalog.replace(input.runtimeCatalog)
   const output = yield* runAllStages(input, onProgress)
   return output as {
     decision: OrchestrationDecision
