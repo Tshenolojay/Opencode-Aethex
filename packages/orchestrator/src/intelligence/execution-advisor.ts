@@ -149,15 +149,24 @@ function buildToolAdvice(pkg: ExecutionPackage): ToolAdvice {
   const verification: string[] = []
   const avoid: string[] = []
 
-  if (pkg.taskClassification.requiresSearch) suggested.push("search", "grep")
-  if (pkg.taskClassification.requiresDependencyGraph) suggested.push("dependency-graph")
-  if (pkg.taskClassification.requiresVerification) {
-    suggested.push("run-tests")
-    verification.push("run-tests")
+  const add = (...tools: string[]) => {
+    for (const tool of tools) if (!suggested.includes(tool)) suggested.push(tool)
   }
-  if (pkg.taskClassification.requiresContext) suggested.push("read", "grep")
 
-  if ((pkg.dependencyIntelligence?.affectedPackages.length ?? 0) > 0) avoid.push("bulk-edit")
+  // Advice must use actual V2 core tool IDs. Higher-level needs such as
+  // dependency analysis and verification are workflows, not fictional tools.
+  if (pkg.taskClassification.requiresSearch) add("glob", "grep")
+  if (pkg.taskClassification.requiresDependencyGraph) add("grep", "read")
+  if (pkg.taskClassification.requiresVerification) {
+    add("bash")
+    verification.push("bash")
+  }
+  if (pkg.taskClassification.requiresContext) add("read", "grep")
+  if ((pkg.dispatchPlan?.requiredAgents.length ?? 0) > 0) add("task")
+
+  if ((pkg.dependencyIntelligence?.affectedPackages.length ?? 0) > 0) {
+    avoid.push("edit", "write", "apply_patch")
+  }
 
   const preferredOrder = suggested.length > 0 ? suggested : ["read", "grep"]
 
@@ -166,14 +175,19 @@ function buildToolAdvice(pkg: ExecutionPackage): ToolAdvice {
     priority[tool] = suggested.length - i
   })
 
+  const readOnly = suggested.filter((tool) => ["read", "grep", "glob"].includes(tool))
+
   return {
     suggestedTools: suggested,
     preferredExecutionOrder: preferredOrder,
-    parallelSafeGroups: suggested.length > 0 ? [suggested] : [],
+    parallelSafeGroups: readOnly.length > 1 ? [readOnly] : [],
     verificationTools: verification,
     avoidTools: avoid,
     toolPriority: priority,
-    toolReasoning: suggested.length > 0 ? "Tools selected from task classification signals" : undefined,
+    toolReasoning:
+      suggested.length > 0
+        ? "Available core tools selected from task requirements; workflow needs are mapped to executable tool IDs"
+        : undefined,
   }
 }
 
