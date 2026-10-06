@@ -28,7 +28,7 @@ const runs: SessionV2.ID[] = []
 const permission = Layer.succeed(
   PermissionV2.Service,
   PermissionV2.Service.of({
-    assert: (input) => Effect.sync(() => assertions.push(input)),
+    assert: (input) => Effect.sync(() => { assertions.push(input) }),
     ask: () => Effect.die("unused"),
     reply: () => Effect.die("unused"),
     get: () => Effect.die("unused"),
@@ -40,7 +40,7 @@ const permission = Layer.succeed(
 const runner = Layer.succeed(
   SessionRunner.Service,
   SessionRunner.Service.of({
-    run: ({ sessionID }) => Effect.sync(() => runs.push(sessionID)),
+    run: ({ sessionID }) => Effect.sync(() => { runs.push(sessionID) }),
   }),
 )
 
