@@ -198,7 +198,7 @@ const layer = Layer.effectDiscard(
               const child =
                 existing ??
                 (yield* Effect.gen(function* () {
-                  const childID = SessionSchema.ID.create()
+                  const childID = SessionSchema.ID.create() as SessionSchema.ID
                   const now = Date.now()
                   const model = specialist.model ?? parent.model
                   const info = SessionV1.SessionInfo.make({
@@ -238,17 +238,17 @@ const layer = Layer.effectDiscard(
                 note: `Started ${input.subagent_type} specialist in child session ${child.id}`,
               })
 
-              const messageID = SessionMessage.ID.create()
-              const prompt = Prompt.fromUserMessage({ text: input.prompt })
+              const messageID = SessionMessage.ID.create() as SessionMessage.ID
+              const prompt = Prompt.fromUserMessage({ text: input.prompt }) as Prompt
               yield* SessionInput.admit(db, events, {
                 id: messageID,
                 sessionID: child.id,
                 prompt,
                 delivery: "steer",
               })
-              return { child, messageID }
+              return { child, messageID, specialist }
             }).pipe(
-              Effect.flatMap(({ child }) =>
+              Effect.flatMap(({ child, specialist }) =>
                 runner.run({ sessionID: child.id, force: true }).pipe(
                   Effect.andThen(sessions.context(child.id)),
                   Effect.flatMap((messages) => {
