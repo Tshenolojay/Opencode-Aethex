@@ -221,7 +221,10 @@ export const Plugin = define({
                     { action: "websearch", resource: "*", effect: "allow" },
                     { action: "read", resource: "*", effect: "allow" },
                   ]
-                : [{ action: "todowrite", resource: "*", effect: "deny" }],
+                : [
+                    { action: "todowrite", resource: "*", effect: "deny" },
+                    { action: "task", resource: "*", effect: "deny" },
+                  ],
               specialist.readonly ? readonlyExternalDirectory : [],
             ),
           )
