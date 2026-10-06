@@ -73,8 +73,8 @@ const make = Effect.gen(function* () {
   }
 
   const resolveCandidates = Effect.gen(function* () {
-    const catalogModels = yield* modelCatalog.allModels()
-    const catalogProviders = yield* providerCatalog.allProviders()
+    const catalogModels = yield* modelCatalog.availableModels()
+    const catalogProviders = yield* providerCatalog.availableProviders()
     const healthSnapshot = yield* providerHealth.snapshot()
     const preferences = yield* preferenceManager.getPreferences()
 
