@@ -17,6 +17,7 @@ function Row(props: { label: string; value: string | undefined; theme: () => any
 function View(props: { api: TuiPluginApi; session_id: string }) {
   const theme = () => props.api.theme.current
   const pkg = createMemo(() => props.api.state.session.execution_package(props.session_id))
+  const activeRuntime = createMemo(() => pkg()?.routingStrategy === "session-runner")
 
   return (
     <box>
@@ -31,8 +32,13 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
           </text>
         }
       >
-        <Row label="Provider" value={pkg()!.provider} theme={theme} />
-        <Row label="Model" value={pkg()!.model} theme={theme} />
+        <Show when={pkg()!.provider || pkg()!.model}>
+          <text fg={activeRuntime() ? theme().success : theme().warning}>
+            {activeRuntime() ? "● Active runtime model" : "○ Routing candidate"}
+          </text>
+        </Show>
+        <Row label={activeRuntime() ? "Active provider" : "Candidate provider"} value={pkg()!.provider} theme={theme} />
+        <Row label={activeRuntime() ? "Active model" : "Candidate model"} value={pkg()!.model} theme={theme} />
         <Row label="Capability" value={pkg()!.capabilityMatch} theme={theme} />
         <Row label="Routing" value={pkg()!.routingStrategy} theme={theme} />
         <Row label="Fallback" value={pkg()!.fallbackModel} theme={theme} />
