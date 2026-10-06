@@ -27,7 +27,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
         when={pkg()?.provider || pkg()?.model || pkg()?.capabilityMatch || pkg()?.routingStrategy || pkg()?.fallbackModel}
         fallback={
           <text fg={theme().textMuted}>
-            <span style={{ fg: theme().success }}>●</span> Ready — model selection on prompt
+            <span style={{ fg: theme().textMuted }}>●</span> No routed model candidate
           </text>
         }
       >
