@@ -7,7 +7,7 @@ import { Database } from "../database/database"
 import { EventV2 } from "../event"
 import { InstallationVersion } from "../installation/version"
 import { PermissionV2 } from "../permission"
-import { SessionExecution } from "../session/execution"
+import { SessionRunner } from "../session/runner"
 import { SessionInput } from "../session/input"
 import { SessionMessage } from "../session/message"
 import { Prompt } from "../session/prompt"
@@ -55,7 +55,7 @@ const layer = Layer.effectDiscard(
     const agents = yield* AgentV2.Service
     const permission = yield* PermissionV2.Service
     const sessions = yield* SessionStore.Service
-    const execution = yield* SessionExecution.Service
+    const runner = yield* SessionRunner.Service
     const events = yield* EventV2.Service
 
     yield* tools
@@ -162,7 +162,7 @@ const layer = Layer.effectDiscard(
               return { child, messageID }
             }).pipe(
               Effect.flatMap(({ child }) =>
-                execution.resume(child.id).pipe(
+                runner.run({ sessionID: child.id, force: true }).pipe(
                   Effect.andThen(sessions.context(child.id)),
                   Effect.map((messages) => {
                     const text = assistantText(messages)
@@ -195,7 +195,7 @@ export const node = makeLocationNode({
     AgentV2.node,
     PermissionV2.node,
     SessionStore.node,
-    SessionExecution.node,
+    SessionRunner.node,
     EventV2.node,
     Database.node,
   ],
