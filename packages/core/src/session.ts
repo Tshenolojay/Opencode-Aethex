@@ -544,10 +544,7 @@ const layer = Layer.effect(
                       const progressInfo = yield* integration.value.summary(progress.executionPackage)
                       const liveInfo: ExecutionPackageInfo = {
                         ...progressInfo,
-                        status:
-                          progressInfo.status === "bypassed" || progressInfo.status === "planned"
-                            ? progressInfo.status
-                            : progress.stage,
+                        status: progressInfo.status === "bypassed" ? "bypassed" : progress.stage,
                         activity: [
                           `Pipeline stage: ${progress.stage}`,
                           ...(progressInfo.activity ?? []),
