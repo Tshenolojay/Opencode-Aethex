@@ -83,15 +83,26 @@ const layer = Layer.effectDiscard(
         input.note ??
           `Specialist ${input.specialist}: ${input.status}${input.childSessionID ? ` (${input.childSessionID})` : ""}`,
       ].slice(-12)
+      const remaining = specialists.filter(
+        (item) => item.status !== "executed" && item.status !== "completed" && item.status !== "bypassed",
+      )
+      const nextStatus =
+        input.status === "running"
+          ? "orchestrating"
+          : input.status === "failed"
+            ? "failed"
+            : remaining.length === 0
+              ? "specialists-complete"
+              : "planned"
       const next = {
         ...(current ?? {
           sessionID: input.parentSessionID,
           timestamp: Date.now(),
         }),
         timestamp: Date.now(),
-        status: current?.status === "bypassed" ? "orchestrating" : (current?.status ?? "orchestrating"),
+        status: nextStatus,
         specialists,
-        needsOrchestration: true,
+        needsOrchestration: remaining.length > 0,
         activity,
       } satisfies typeof ExecutionPackageContract.Info.Type
       setExecutionPackage(input.parentSessionID, next)
