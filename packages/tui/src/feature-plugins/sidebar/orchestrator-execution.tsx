@@ -23,7 +23,7 @@ function confidenceColor(level: string | undefined, theme: () => any) {
 
 function statusColor(status: string | undefined, theme: () => any) {
   if (status === "completed" || status === "bypassed") return theme().success
-  if (status === "orchestrating" || status === "busy") return theme().warning
+  if (status === "planned" || status === "orchestrating" || status === "busy") return theme().warning
   return theme().textMuted
 }
 
@@ -47,7 +47,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
         when={pkg()}
         fallback={
           <text fg={theme().textMuted}>
-            <span style={{ fg: theme().success }}>●</span> Ready — awaiting prompt
+            <span style={{ fg: theme().textMuted }}>●</span> Awaiting orchestration data
           </text>
         }
       >
@@ -67,7 +67,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
           Status: <span fg={statusColor(pkg()!.status, theme)}>{pkg()!.status ?? "idle"}</span>
         </text>
         <Show when={pkg()!.needsOrchestration}>
-          <text fg={theme().warning}>Specialists required</text>
+          <text fg={theme().warning}>Specialists planned</text>
         </Show>
         <Show when={pkg()!.needsOrchestration === false && pkg()!.status === "bypassed"}>
           <text fg={theme().success}>Pipeline bypassed — high confidence</text>
