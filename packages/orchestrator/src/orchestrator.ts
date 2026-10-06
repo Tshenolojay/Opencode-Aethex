@@ -678,7 +678,7 @@ const layer = Layer.effect(
           Layer.provideMerge(Layer.mergeAll(RuntimeCache.layer, RuntimeMetrics.layer, RuntimeContext.layer, SpecialistRunner.layer, ContextBuilder.layer)),
         ),
       ),
-    ].reduce((acc, tier) => Layer.provideMerge(tier, acc)),
+    ].reduce<Layer.Layer<any, any, any>>((acc, tier) => Layer.provideMerge(tier as any, acc as any) as any, Layer.empty),
       ),
     ),
   ),
