@@ -356,14 +356,19 @@ export const {
             timestamp: Date.now(),
             status: "orchestrating",
           }
+          const specialists = event.properties.specialists ?? current.specialists
+          const unresolved =
+            specialists?.some(
+              (specialist) =>
+                specialist.status !== "executed" &&
+                specialist.status !== "completed" &&
+                specialist.status !== "bypassed",
+            ) ?? current.needsOrchestration
           setStore("execution_package", event.properties.sessionID, {
             ...current,
-            specialists: event.properties.specialists ?? current.specialists,
+            specialists,
             consensusSummary: event.properties.consensusSummary ?? current.consensusSummary,
-            needsOrchestration:
-              (event.properties.specialists?.length ?? current.specialists?.length ?? 0) > 0
-                ? true
-                : current.needsOrchestration,
+            needsOrchestration: unresolved,
           })
           break
         }
