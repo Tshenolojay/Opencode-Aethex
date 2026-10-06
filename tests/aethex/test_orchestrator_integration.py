@@ -18,8 +18,8 @@ def test_orchestrator_is_an_additive_session_hook() -> None:
     assert "integration.value" in session
     assert ".integrate({" in session
     assert "Flag.OPENCODE_DISABLE_ORCHESTRATOR" in session
-    assert "execution.wake(input.sessionID)" in session
-    assert session.index("integration.value") < session.index("execution.wake(input.sessionID)")
+    assert "execution.wake(admitted.sessionID)" in session
+    assert session.index("integration.value") < session.index("execution.wake(admitted.sessionID)")
 
 
 def test_high_confidence_bypass_is_prompt_transparent() -> None:
