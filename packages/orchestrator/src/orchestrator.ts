@@ -187,9 +187,7 @@ function recordEntry(entries: PhaseEntry[], phase: string, durationMs: number, r
   return [...entries, { phase, durationMs, result, error: undefined }]
 }
 
-const orchestrate = Effect.fn("OrchestratorService.orchestrate")(function* (input) {
-  const catalog = yield* Catalog.Service
-  if (input.runtimeCatalog) yield* catalog.replace(input.runtimeCatalog)
+const orchestrateCore = Effect.fn("OrchestratorService.orchestrate")(function* (input) {
   const classifier = yield* TaskClassifier.Service
   const confidence = yield* ConfidenceEngine.Service
   const dispatcher = yield* AgentDispatcher.Service
@@ -400,12 +398,10 @@ const orchestrate = Effect.fn("OrchestratorService.orchestrate")(function* (inpu
   }
 })
 
-const orchestrateWithContext = Effect.fn("OrchestratorService.orchestrateWithContext")(function* (
+const orchestrateWithContextCore = Effect.fn("OrchestratorService.orchestrateWithContext")(function* (
   input,
   onProgress?: PipelineProgressHandler,
 ) {
-  const catalog = yield* Catalog.Service
-  if (input.runtimeCatalog) yield* catalog.replace(input.runtimeCatalog)
   const output = yield* runAllStages(input, onProgress)
   return output as {
     decision: OrchestrationDecision
@@ -415,6 +411,18 @@ const orchestrateWithContext = Effect.fn("OrchestratorService.orchestrateWithCon
     executionPackage: ExecutionPackage
   }
 })
+
+const orchestrate: Interface["orchestrate"] = (input) =>
+  input.runtimeCatalog
+    ? orchestrateCore(input).pipe(Effect.provideService(Catalog.RuntimeCatalog, input.runtimeCatalog))
+    : orchestrateCore(input)
+
+const orchestrateWithContext: Interface["orchestrateWithContext"] = (input, onProgress) =>
+  input.runtimeCatalog
+    ? orchestrateWithContextCore(input, onProgress).pipe(
+        Effect.provideService(Catalog.RuntimeCatalog, input.runtimeCatalog),
+      )
+    : orchestrateWithContextCore(input, onProgress)
 
 const skip = Effect.fn("OrchestratorService.skip")(function* (_input) {
   return {
