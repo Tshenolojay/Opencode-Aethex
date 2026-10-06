@@ -9,17 +9,11 @@ function render(sessionID: SessionSchema.ID): string | undefined {
   const pkg = getExecutionPackage(sessionID)
   if (!pkg) return undefined
 
-  if (!pkg.needsOrchestration && pkg.status !== "orchestrating" && pkg.status !== "classifying" && pkg.status !== "planned") {
-    if (pkg.status !== "bypassed") return undefined
-    return [
-      "<orchestration>",
-      `Confidence: ${pkg.confidence ?? "high"} (specialists bypassed)`,
-      pkg.currentTask ? `Task: ${pkg.currentTask}` : undefined,
-      "</orchestration>",
-    ]
-      .filter(Boolean)
-      .join("\n")
-  }
+  // High-confidence / bypassed work must remain transparent to the
+  // underlying OpenCode prompt. Keep the result in ExecutionPackage for UI
+  // visibility, but inject no Aethex system instructions unless orchestration
+  // is actually required.
+  if (!pkg.needsOrchestration) return undefined
 
   const specialists = pkg.specialists ?? []
   const normalizeAgent = (name: string) => {
