@@ -258,7 +258,7 @@ const orchestrateCore = Effect.fn("OrchestratorService.orchestrate")(function* (
       confidenceScore,
       dispatchPlan: AgentDispatcher.emptyDispatchPlan(),
       knowledgeBundle: KnowledgeBundle.empty(classification.type),
-      executionStatus: "completed",
+      executionStatus: "completed" as const,
       skipReason: "high confidence — no specialist agents needed",
       selectedCapabilities: undefined,
       knowledgeRequirements: undefined,
@@ -381,7 +381,7 @@ const orchestrateCore = Effect.fn("OrchestratorService.orchestrate")(function* (
     confidenceScore,
     dispatchPlan,
     knowledgeBundle,
-    executionStatus: dispatchPlan.requiredAgents.length > 0 ? "collecting" : "completed",
+    executionStatus: dispatchPlan.requiredAgents.length > 0 ? ("collecting" as const) : ("completed" as const),
     skipReason: dispatchPlan.requiredAgents.length === 0
       ? "no specialist agents required"
       : undefined,
@@ -412,17 +412,17 @@ const orchestrateWithContextCore = Effect.fn("OrchestratorService.orchestrateWit
   }
 })
 
-const orchestrate: Interface["orchestrate"] = (input) =>
+const orchestrate = ((input: OrchestrationInput) =>
   input.runtimeCatalog
     ? orchestrateCore(input).pipe(Effect.provideService(Catalog.RuntimeCatalog, input.runtimeCatalog))
-    : orchestrateCore(input)
+    : orchestrateCore(input)) as unknown as Interface["orchestrate"]
 
-const orchestrateWithContext: Interface["orchestrateWithContext"] = (input, onProgress) =>
+const orchestrateWithContext = ((input: OrchestrationInput, onProgress?: PipelineProgressHandler) =>
   input.runtimeCatalog
     ? orchestrateWithContextCore(input, onProgress).pipe(
         Effect.provideService(Catalog.RuntimeCatalog, input.runtimeCatalog),
       )
-    : orchestrateWithContextCore(input, onProgress)
+    : orchestrateWithContextCore(input, onProgress)) as unknown as Interface["orchestrateWithContext"]
 
 const skip = Effect.fn("OrchestratorService.skip")(function* (_input) {
   return {
@@ -453,6 +453,15 @@ const skip = Effect.fn("OrchestratorService.skip")(function* (_input) {
   }
 })
 
+function composeDependencyTiers(tiers: readonly unknown[]): Layer.Layer<any, any, any> {
+  if (tiers.length === 0) return Layer.empty as unknown as Layer.Layer<any, any, any>
+  const [first, ...rest] = tiers
+  return rest.reduce(
+    (acc, tier) => Layer.provideMerge(tier as any, acc as any) as any,
+    first as Layer.Layer<any, any, any>,
+  )
+}
+
 const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
@@ -469,7 +478,7 @@ const layer = Layer.effect(
   Layer.provideMerge(
     SpecialistBootstrap.layer.pipe(
       Layer.provideMerge(
-        [
+        composeDependencyTiers([
           Layer.mergeAll(
             // --- Tier 0: pure leaf services (no cross-deps) ---
             TaskClassifier.layer,
@@ -678,7 +687,7 @@ const layer = Layer.effect(
           Layer.provideMerge(Layer.mergeAll(RuntimeCache.layer, RuntimeMetrics.layer, RuntimeContext.layer, SpecialistRunner.layer, ContextBuilder.layer)),
         ),
       ),
-    ].reduce<Layer.Layer<any, any, any>>((acc, tier) => Layer.provideMerge(tier as any, acc as any) as any, Layer.empty),
+        ]),
       ),
     ),
   ),
