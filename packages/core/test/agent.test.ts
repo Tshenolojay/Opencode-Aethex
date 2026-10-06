@@ -149,7 +149,9 @@ describe("AgentV2", () => {
         const specialist = agents.find((item) => item.id === id)
         expect(specialist).toBeDefined()
         expect(specialist?.mode).toBe("subagent")
-        const taskRule = specialist?.permissions.findLast((rule) => rule.action === "task")
+        const taskRule = specialist?.permissions.findLast(
+          (rule) => rule.action === "task" || rule.action === "*",
+        )
         expect(taskRule?.effect).toBe("deny")
       }
     }),
