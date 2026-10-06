@@ -20,6 +20,22 @@ export interface ProviderData {
   readonly disabled?: boolean
 }
 
+export interface RuntimeCatalogSnapshot {
+  readonly providers: readonly ProviderData[]
+  readonly models: readonly ModelData[]
+  readonly defaultModel?: {
+    readonly providerID: string
+    readonly modelID: string
+  }
+}
+
+export const RuntimeCatalog = Context.Reference<RuntimeCatalogSnapshot>(
+  "@opencode/orchestrator/RuntimeCatalog",
+  {
+    defaultValue: () => ({ providers: [], models: [] }),
+  },
+)
+
 export interface Interface {
   readonly provider: {
     readonly get: (providerID: string) => Effect.Effect<ProviderData | undefined>
@@ -37,36 +53,37 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/v2/Catalog") {}
 
-const layer = Layer.effect(
+const layer = Layer.succeed(
   Service,
-  Effect.gen(function* () {
-    let providers: ProviderData[] = []
-    let models: ModelData[] = []
-    let defaultModel: ModelData | undefined
-
-    const update = (fn: (draft: { readonly providers: ProviderData[]; readonly models: ModelData[]; readonly defaultModel: ModelData | undefined }) => void) => {
-      const draft = { providers, models, defaultModel }
-      fn(draft)
-      providers = draft.providers
-      models = draft.models
-      defaultModel = draft.defaultModel
-    }
-
-    return Service.of({
-      provider: {
-        get: (id) => Effect.succeed(providers.find((p) => p.id === id)),
-        all: () => Effect.succeed(providers),
-        available: () => Effect.succeed(providers.filter((p) => !p.disabled)),
-      },
-      model: {
-        get: (providerID, modelID) => Effect.succeed(models.find((m) => m.providerID === providerID && m.id === modelID)),
-        all: () => Effect.succeed(models),
-        available: () => Effect.succeed(models.filter((m) => m.enabled)),
-        default: () => Effect.succeed(defaultModel),
-        small: (providerID) => Effect.succeed(models.find((m) => m.providerID === providerID && m.limit.context <= 32000)),
-      },
-      update,
-    })
+  Service.of({
+    provider: {
+      get: (id) => Effect.map(RuntimeCatalog, (snapshot) => snapshot.providers.find((provider) => provider.id === id)),
+      all: () => Effect.map(RuntimeCatalog, (snapshot) => [...snapshot.providers]),
+      available: () =>
+        Effect.map(RuntimeCatalog, (snapshot) => snapshot.providers.filter((provider) => !provider.disabled)),
+    },
+    model: {
+      get: (providerID, modelID) =>
+        Effect.map(RuntimeCatalog, (snapshot) =>
+          snapshot.models.find((model) => model.providerID === providerID && model.id === modelID),
+        ),
+      all: () => Effect.map(RuntimeCatalog, (snapshot) => [...snapshot.models]),
+      available: () => Effect.map(RuntimeCatalog, (snapshot) => snapshot.models.filter((model) => model.enabled)),
+      default: () =>
+        Effect.map(RuntimeCatalog, (snapshot) =>
+          snapshot.defaultModel
+            ? snapshot.models.find(
+                (model) =>
+                  model.providerID === snapshot.defaultModel?.providerID &&
+                  model.id === snapshot.defaultModel?.modelID,
+              )
+            : undefined,
+        ),
+      small: (providerID) =>
+        Effect.map(RuntimeCatalog, (snapshot) =>
+          snapshot.models.find((model) => model.providerID === providerID && model.limit.context <= 32000),
+        ),
+    },
   }),
 )
 

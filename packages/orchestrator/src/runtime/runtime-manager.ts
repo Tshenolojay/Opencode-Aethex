@@ -71,6 +71,7 @@ const run = Effect.fn("RuntimeManager.run")(function* (input: RuntimeManagerInpu
   yield* metrics.reset
 
   const runnerOutput: RunnerOutput = yield* runner.run({
+    sessionID: input.sessionID,
     graph: input.graph,
     policy: input.policy,
     capabilityPlan: input.capabilityPlan,

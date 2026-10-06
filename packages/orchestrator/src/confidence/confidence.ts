@@ -49,39 +49,89 @@ const typeBias: Record<string, number> = {
   "security-review": 0.25,
 }
 
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, value))
+}
+
 function buildFactors(input: InputRich): ConfidenceFactor[] {
   const factors: ConfidenceFactor[] = []
 
-  const bias = typeBias[input.classification.type] ?? 0.5
-  factors.push({ name: "task-type-bias", value: bias, weight: 0.25, description: `Task type bias for ${input.classification.type}` })
+  const bias = clamp01(typeBias[input.classification.type] ?? 0.5)
+  factors.push({
+    name: "task-type-bias",
+    value: bias,
+    weight: 0.25,
+    description: `Prior confidence for ${input.classification.type}`,
+  })
 
-  const complexityFactor = 1.0 - input.classification.complexity * 0.4
-  factors.push({ name: "complexity", value: complexityFactor, weight: 0.2, description: "Task complexity penalty" })
+  const complexityFactor = clamp01(1 - input.promptComplexity * 0.65)
+  factors.push({
+    name: "complexity",
+    value: complexityFactor,
+    weight: 0.2,
+    description: "Confidence remaining after task-complexity penalty",
+  })
 
-  const repoPenalty = Math.min(input.repositorySize / 100000, 0.3)
-  factors.push({ name: "repository-size", value: 1.0 - repoPenalty, weight: 0.15, description: "Repository size penalty" })
+  const repositoryFactor =
+    input.repositorySize <= 0
+      ? 0.65
+      : clamp01(1 - Math.min(input.repositorySize / 100_000, 0.35))
+  factors.push({
+    name: "repository-size",
+    value: repositoryFactor,
+    weight: 0.12,
+    description: input.repositorySize <= 0 ? "Repository size is unknown" : "Repository-size confidence",
+  })
 
-  const convoPenalty = Math.min(input.conversationLength / 50, 0.2)
-  factors.push({ name: "conversation-length", value: 1.0 - convoPenalty, weight: 0.1, description: "Conversation length penalty" })
+  const conversationFactor = clamp01(1 - Math.min(input.conversationLength / 100, 0.35))
+  factors.push({
+    name: "conversation-length",
+    value: conversationFactor,
+    weight: 0.08,
+    description: "Conversation-history confidence",
+  })
 
-  const contextBonus = input.contextAvailable ? 1.1 : 1.0
-  factors.push({ name: "context-available", value: contextBonus, weight: 0.1, description: "Context availability bonus" })
+  factors.push({
+    name: "context-available",
+    value: input.contextAvailable ? 0.95 : 0.55,
+    weight: 0.1,
+    description: input.contextAvailable ? "Relevant runtime context is available" : "Runtime context is sparse",
+  })
 
-  const filesBonus = input.filesAttached > 0 ? 1.05 + Math.min(input.filesAttached * 0.02, 0.1) : 1.0
-  factors.push({ name: "files-attached", value: filesBonus, weight: 0.08, description: "Files attached bonus" })
+  factors.push({
+    name: "files-attached",
+    value: input.filesAttached > 0 ? 0.95 : 0.8,
+    weight: 0.05,
+    description: input.filesAttached > 0 ? "Prompt includes direct file context" : "No direct file attachment context",
+  })
 
-  const toolResultsBonus = input.previousToolResults ? 1.05 : 1.0
-  factors.push({ name: "previous-tool-results", value: toolResultsBonus, weight: 0.07, description: "Previous tool results bonus" })
+  factors.push({
+    name: "previous-tool-results",
+    value: input.previousToolResults ? 0.95 : 0.8,
+    weight: 0.05,
+    description: input.previousToolResults ? "Prior tool evidence is available" : "No prior tool evidence",
+  })
 
-  if (input.classifications.length > 1) {
-    const classificationConflict = 1.0 - (input.classifications.length - 1) * 0.1
-    factors.push({
-      name: "classification-conflict",
-      value: Math.max(classificationConflict, 0.5),
-      weight: 0.05,
-      description: "Multiple classifications reduce confidence",
-    })
-  }
+  const primaryClassification = input.classifications[0]
+  factors.push({
+    name: "classification-certainty",
+    value: clamp01(primaryClassification?.confidence ?? 0.75),
+    weight: 0.08,
+    description: "Classifier certainty for the current prompt",
+  })
+
+  const secondaryConfidence = input.classifications
+    .slice(1)
+    .reduce((total, classification) => total + clamp01(classification.confidence), 0)
+  const agreement = input.classifications.length <= 1
+    ? 1
+    : clamp01(1 - Math.min(secondaryConfidence / 2, 0.55))
+  factors.push({
+    name: "classification-agreement",
+    value: agreement,
+    weight: 0.07,
+    description: "Agreement between primary and secondary task classifications",
+  })
 
   return factors
 }
@@ -95,11 +145,12 @@ function weightedScore(factors: readonly ConfidenceFactor[]): number {
   const envWeight = environmental.reduce((acc, factor) => acc + factor.weight, 0)
   const envScore =
     envWeight === 0
-      ? 1
+      ? 0.75
       : environmental.reduce((acc, factor) => acc + factor.value * factor.weight, 0) / envWeight
 
-  // Type + complexity dominate; environmental factors only soften the score.
-  return Math.min(1, Math.max(0, type * complexity * (0.7 + 0.3 * envScore)))
+  // Task type and complexity remain the gating signals. Runtime evidence can
+  // modestly strengthen or weaken that prior, but never manufacture certainty.
+  return clamp01(type * complexity * (0.75 + 0.25 * clamp01(envScore)))
 }
 
 const estimate: Interface["estimate"] = Effect.fn("ConfidenceEngine.estimate")(function* (input) {

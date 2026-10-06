@@ -115,16 +115,44 @@ describe("AgentV2", () => {
 
       const agents = yield* agent.all()
       expect(agents.map((item) => String(item.id)).sort()).toEqual([
+        "architecture",
         "build",
         "compaction",
+        "context",
+        "dependency",
+        "documentation",
         "explore",
         "general",
         "plan",
+        "planning",
+        "repository",
+        "search",
         "summary",
         "title",
+        "verification",
       ])
       for (const item of agents) {
         expect(item.permissions.some((rule) => rule.action === "bash" && rule.effect !== "deny")).toBe(false)
+      }
+
+      const specialistIDs = [
+        "search",
+        "repository",
+        "dependency",
+        "documentation",
+        "architecture",
+        "verification",
+        "context",
+        "planning",
+      ]
+      for (const id of specialistIDs) {
+        const specialist = agents.find((item) => item.id === id)
+        expect(specialist).toBeDefined()
+        expect(specialist?.mode).toBe("subagent")
+        const taskRule = specialist?.permissions.findLast(
+          (rule) => rule.action === "task" || rule.action === "*",
+        )
+        expect(taskRule?.effect).toBe("deny")
       }
     }),
   )

@@ -43,6 +43,21 @@ export function LeftSidebar(props: {
     if (!id) return undefined
     return sync.data.execution_package[id]
   })
+  const pendingSpecialists = createMemo(
+    () =>
+      activeExecution()?.specialists?.filter(
+        (specialist) =>
+          specialist.status !== "executed" &&
+          specialist.status !== "completed" &&
+          specialist.status !== "bypassed",
+      ).length ?? 0,
+  )
+  const completedSpecialists = createMemo(
+    () =>
+      activeExecution()?.specialists?.filter(
+        (specialist) => specialist.status === "executed" || specialist.status === "completed",
+      ).length ?? 0,
+  )
 
   return (
     <box
@@ -76,8 +91,10 @@ export function LeftSidebar(props: {
             </Show>
           </text>
           <Show when={(activeExecution()!.specialists?.length ?? 0) > 0}>
-            <text fg={theme.warning}>
-              {activeExecution()!.specialists!.length} specialists
+            <text fg={pendingSpecialists() > 0 ? theme.warning : theme.success}>
+              {pendingSpecialists() > 0
+                ? `${pendingSpecialists()} specialist${pendingSpecialists() === 1 ? "" : "s"} pending`
+                : `${completedSpecialists()} specialist${completedSpecialists() === 1 ? "" : "s"} complete`}
               <Show when={activeExecution()!.currentTask}>
                 <span fg={theme.textMuted}> · {Locale.truncate(activeExecution()!.currentTask!, 18)}</span>
               </Show>
@@ -85,7 +102,7 @@ export function LeftSidebar(props: {
           </Show>
           <Show when={(activeExecution()!.phases?.length ?? 0) > 0}>
             <text fg={theme.textMuted}>
-              {activeExecution()!.phases!.length} services active
+              {activeExecution()!.phases!.length} pipeline stages
             </text>
           </Show>
         </box>

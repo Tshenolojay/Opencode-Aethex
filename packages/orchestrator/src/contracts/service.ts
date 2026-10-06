@@ -12,6 +12,7 @@ import type { CapabilityPlan } from "../planner/capability-planner"
 import type { KnowledgePlan } from "../planner/knowledge-planner"
 import type { Graph } from "../planner/execution-graph"
 import type { PlanningPolicy } from "../planner/planning-policy"
+import type { RuntimeCatalogSnapshot } from "../catalog"
 
 export interface OrchestrationInput {
   readonly promptText: string
@@ -25,6 +26,7 @@ export interface OrchestrationInput {
   readonly assistantResponses: readonly string[] | undefined
   readonly toolResults: readonly string[] | undefined
   readonly projectInfo: string | undefined
+  readonly runtimeCatalog?: RuntimeCatalogSnapshot
 }
 
 export interface OrchestrationDecision {

@@ -41,17 +41,6 @@ export const runFoundationStage = Effect.fn("Pipeline.foundation")(function* (st
   })
 
   const tConf = Date.now()
-  const confidenceLevel = yield* confidence.estimate({
-    classification,
-    repositorySize: state.input.repositorySize,
-    conversationLength: state.input.conversationLength,
-    filesAttached: state.input.filesAttached ? 1 : 0,
-    promptComplexity: classification.complexity,
-    contextAvailable: state.input.contextAvailable,
-    previousToolResults: state.input.previousToolResults,
-  })
-  const confMs = Date.now() - tConf
-
   const confidenceScore = yield* confidence.estimateWithScore({
     classification,
     repositorySize: state.input.repositorySize,
@@ -64,6 +53,8 @@ export const runFoundationStage = Effect.fn("Pipeline.foundation")(function* (st
     sessionMetadata: state.input.sessionMetadata,
     toolHistory: state.input.toolResults,
   })
+  const confidenceLevel = confidenceScore.level
+  const confMs = Date.now() - tConf
 
   return {
     ...state,

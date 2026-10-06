@@ -1,0 +1,60 @@
+name: aethex-pytest
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/orchestrator/**"
+      - "packages/core/src/session.ts"
+      - "packages/core/src/session/**"
+      - "packages/core/src/system-context/orchestration.ts"
+      - "packages/core/src/tool/task.ts"
+      - "packages/core/src/plugin/agent.ts"
+      - "packages/tui/src/**"
+      - "tests/aethex/**"
+      - ".github/workflows/aethex-pytest.yml"
+  workflow_dispatch:
+
+jobs:
+  orchestrator-integration-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Install pytest
+        run: python3 -m pip install --disable-pip-version-check pytest==8.3.5
+
+      - name: Verify Aethex orchestrator integration contracts
+        run: python3 -m pytest tests/aethex/test_orchestrator_integration.py -q
+
+
+  orchestrator-typescript:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Setup Bun and dependencies
+        uses: ./.github/actions/setup-bun
+
+      - name: Typecheck orchestrator
+        run: bun run --cwd packages/orchestrator typecheck
+
+      - name: Run focused orchestrator integration tests
+        working-directory: packages/orchestrator
+        run: >
+          bun test
+          test/session-integration.test.ts
+          test/execution-advisor.test.ts
+          test/resource-selection.test.ts
+
+      - name: Run focused core Aethex integration tests
+        working-directory: packages/core
+        run: >
+          bun test
+          test/tool-task.test.ts
+          test/system-context-orchestration.test.ts
+          test/agent.test.ts

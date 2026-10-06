@@ -68,7 +68,14 @@ describe("SessionIntegration confidence → specialists", () => {
     expect(result.summary.specialists?.[0]?.name.includes("/")).toBe(false)
     expect((result.summary.activity?.length ?? 0) > 0).toBe(true)
     expect((result.summary.phases?.length ?? 0) > 0).toBe(true)
-    expect((result.summary.recommendations ?? []).some((line) => line.includes("subagent_type"))).toBe(true)
+    expect(result.summary.status).toBe("planned")
+    expect(result.summary.specialists?.every((specialist) => specialist.status === "planned")).toBe(true)
+    // Internal heuristic intelligence must not masquerade as collected repository evidence.
+    expect(result.summary.repositoryIntelligence).toBeUndefined()
+    expect(result.summary.architectureSummary).toBeUndefined()
+    expect(result.summary.dependencySummary).toBeUndefined()
+    expect(result.summary.documentationSummary).toBeUndefined()
+    expect(result.summary.verificationSummary).toBeUndefined()
   })
 
   test("summary exposes bypass activity for high-confidence prompts", async () => {

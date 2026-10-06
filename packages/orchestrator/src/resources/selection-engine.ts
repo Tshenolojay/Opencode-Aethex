@@ -73,8 +73,8 @@ const make = Effect.gen(function* () {
   }
 
   const resolveCandidates = Effect.gen(function* () {
-    const catalogModels = yield* modelCatalog.allModels()
-    const catalogProviders = yield* providerCatalog.allProviders()
+    const catalogModels = yield* modelCatalog.availableModels()
+    const catalogProviders = yield* providerCatalog.availableProviders()
     const healthSnapshot = yield* providerHealth.snapshot()
     const preferences = yield* preferenceManager.getPreferences()
 
@@ -249,7 +249,7 @@ const make = Effect.gen(function* () {
     selectForSpecialist("_task", requiredCapabilities, [], strategy)
 
   const getAvailableProviders = Effect.fn("SelectionEngine.getAvailableProviders")(function* () {
-    const allProviders = yield* providerCatalog.allProviders()
+    const allProviders = yield* providerCatalog.availableProviders()
     const healthSnapshot = yield* providerHealth.snapshot()
     const available: string[] = []
     for (const p of allProviders) {
@@ -261,7 +261,7 @@ const make = Effect.gen(function* () {
   })
 
   const getAvailableModels = Effect.fn("SelectionEngine.getAvailableModels")(function* (providerID: string) {
-      const allModels = yield* modelCatalog.allModels()
+      const allModels = yield* modelCatalog.availableModels()
       return allModels.filter((m) => m.providerID === providerID).map((m) => m.modelID)
     })
 

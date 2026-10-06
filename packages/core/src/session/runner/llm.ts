@@ -20,6 +20,7 @@ import { ProviderV2 } from "../../provider"
 import { QuestionV2 } from "../../question"
 import { SystemContext } from "../../system-context/index"
 import { SystemContextRegistry } from "../../system-context/registry"
+import { SystemContextOrchestration } from "../../system-context/orchestration"
 import { SkillGuidance } from "../../skill/guidance"
 import { ReferenceGuidance } from "../../reference/guidance"
 import { ToolRegistry } from "../../tool/registry"
@@ -31,6 +32,8 @@ import { SessionHistory } from "../history"
 import { SessionInput } from "../input"
 import { SessionSchema } from "../schema"
 import { SessionStore } from "../store"
+import { getExecutionPackage, setExecutionPackage } from "../execution-package-store"
+import { ExecutionPackage as ExecutionPackageContract } from "@opencode-ai/schema/execution-package"
 import { type RunError, Service } from "./index"
 import { SessionRunnerModel } from "./model"
 import { createLLMEventPublisher } from "./publish-llm-event"
@@ -165,10 +168,16 @@ const layer = Layer.effect(
     const continueAfterOverflowCompaction = (step: number) =>
       new TurnTransitionError({ _tag: "ContinueAfterOverflowCompaction", step })
 
-    const loadSystemContext = (agent: AgentV2.Selection) =>
-      Effect.all([systemContext.load(), skillGuidance.load(agent), referenceGuidance.load()], {
-        concurrency: "unbounded",
-      }).pipe(Effect.map(SystemContext.combine))
+    const loadSystemContext = (agent: AgentV2.Selection, sessionID: SessionSchema.ID) =>
+      Effect.all(
+        [
+          systemContext.load(),
+          skillGuidance.load(agent),
+          referenceGuidance.load(),
+          Effect.sync(() => SystemContextOrchestration.load(sessionID)),
+        ],
+        { concurrency: "unbounded" },
+      ).pipe(Effect.map(SystemContext.combine))
 
     const runTurnAttempt = Effect.fn("SessionRunner.runTurn")(function* (
       sessionID: SessionSchema.ID,
@@ -180,7 +189,7 @@ const layer = Layer.effect(
       if (session.location.directory !== location.directory || session.location.workspaceID !== location.workspaceID)
         return yield* Effect.interrupt
       const agent = yield* agents.select(session.agent)
-      const initialized = yield* SessionContextEpoch.initialize(db, loadSystemContext(agent), session.id)
+      const initialized = yield* SessionContextEpoch.initialize(db, loadSystemContext(agent, session.id), session.id)
       const toolFibers = yield* FiberSet.make<void, ToolOutputStore.Error>()
       let needsContinuation = false
       let currentStep = step
@@ -195,8 +204,37 @@ const layer = Layer.effect(
         if (promoted > 0) currentStep = 1
       }
       const system =
-        initialized ?? (yield* SessionContextEpoch.prepare(db, events, loadSystemContext(agent), session.id))
+        initialized ?? (yield* SessionContextEpoch.prepare(db, events, loadSystemContext(agent, session.id), session.id))
       const model = yield* models.resolve(session)
+      const currentExecutionPackage = getExecutionPackage(session.id)
+      if (currentExecutionPackage) {
+        const modelExecutionPackage = {
+          ...currentExecutionPackage,
+          timestamp: Date.now(),
+          provider: model.provider,
+          model: model.id,
+          routingStrategy: "session-runner",
+          activity: [
+            ...(currentExecutionPackage.activity ?? []),
+            `SessionRunner model: ${model.provider}/${model.id}`,
+          ].slice(-12),
+        } satisfies typeof ExecutionPackageContract.Info.Type
+        setExecutionPackage(session.id, modelExecutionPackage)
+        yield* Effect.all([
+          events.publish(ExecutionPackageContract.Updated, {
+            sessionID: session.id,
+            package: modelExecutionPackage,
+          }),
+          events.publish(ExecutionPackageContract.ModelSelectionUpdated, {
+            sessionID: session.id,
+            provider: model.provider,
+            model: model.id,
+            capabilityMatch: modelExecutionPackage.capabilityMatch,
+            routingStrategy: modelExecutionPackage.routingStrategy,
+            fallbackModel: modelExecutionPackage.fallbackModel,
+          }),
+        ])
+      }
       const entries = yield* SessionHistory.entriesForRunner(db, session.id, system.baselineSeq)
       const context = entries.map((entry) => entry.message)
       const isLastStep = agent.info?.steps !== undefined && currentStep >= agent.info.steps
@@ -380,7 +418,40 @@ const layer = Layer.effect(
       )
     })
 
-    const run = Effect.fn("SessionRunner.run")(function* (input: {
+    const publishExecutionStatus = Effect.fn("SessionRunner.publishExecutionStatus")(function* (
+      sessionID: SessionSchema.ID,
+      status: "completed" | "failed" | "interrupted",
+    ) {
+      const current = getExecutionPackage(sessionID)
+      if (!current) return
+      const note =
+        status === "completed"
+          ? "Session execution completed"
+          : status === "interrupted"
+            ? "Session execution interrupted"
+            : "Session execution failed"
+      const next = {
+        ...current,
+        timestamp: Date.now(),
+        status,
+        progress: status === "completed" ? 1 : current.progress,
+        activity: [...(current.activity ?? []), note].slice(-12),
+      } satisfies typeof ExecutionPackageContract.Info.Type
+      setExecutionPackage(sessionID, next)
+      yield* events.publish(ExecutionPackageContract.Updated, {
+        sessionID,
+        package: next,
+      })
+      if (status === "completed") {
+        yield* events.publish(ExecutionPackageContract.ExecutionCompleted, {
+          sessionID,
+          currentTask: next.currentTask,
+          status,
+        })
+      }
+    })
+
+    const executeRun = Effect.fn("SessionRunner.executeRun")(function* (input: {
       readonly sessionID: SessionSchema.ID
       readonly force: boolean
     }) {
@@ -404,6 +475,19 @@ const layer = Layer.effect(
         promotion = shouldRun ? "queue" : undefined
       }
     })
+
+    const run = (input: {
+      readonly sessionID: SessionSchema.ID
+      readonly force: boolean
+    }) =>
+      executeRun(input).pipe(
+        Effect.onExit((exit) =>
+          publishExecutionStatus(
+            input.sessionID,
+            exit._tag === "Success" ? "completed" : Cause.hasInterrupts(exit.cause) ? "interrupted" : "failed",
+          ).pipe(Effect.catchCause(() => Effect.void)),
+        ),
+      )
 
     return Service.of({
       run,

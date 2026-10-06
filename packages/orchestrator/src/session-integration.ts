@@ -6,6 +6,8 @@ import type { ExecutionPackage } from "./integration/execution-package"
 import { ExecutionPackage as ExecutionPackageContract } from "@opencode-ai/schema/execution-package"
 import { OrchestratorService } from "./orchestrator"
 import type { PhaseEntry } from "./orchestrator"
+import type { PipelineProgressHandler } from "./pipeline/pipeline"
+import type { RuntimeCatalogSnapshot } from "./catalog"
 
 type ExecutionPackageInfo = typeof ExecutionPackageContract.Info.Type
 
@@ -32,6 +34,7 @@ export interface IntegrationInput {
   readonly assistantResponses: readonly string[] | undefined
   readonly toolResults: readonly string[] | undefined
   readonly projectInfo: string | undefined
+  readonly runtimeCatalog?: RuntimeCatalogSnapshot
 }
 
 export interface IntegrationResult {
@@ -42,7 +45,10 @@ export interface IntegrationResult {
 export interface Interface {
   readonly decide: (input: IntegrationInput) => Effect.Effect<IntegrationResult>
   readonly bypass: (input: IntegrationInput) => Effect.Effect<IntegrationResult>
-  readonly integrate: (input: IntegrationInput) => Effect.Effect<ExecutionPackage>
+  readonly integrate: (
+    input: IntegrationInput,
+    onProgress?: PipelineProgressHandler,
+  ) => Effect.Effect<ExecutionPackage>
   readonly summary: (pkg: ExecutionPackage) => Effect.Effect<ExecutionPackageInfo>
 }
 
@@ -74,6 +80,7 @@ const make = Effect.gen(function* () {
       assistantResponses: input.assistantResponses,
       toolResults: input.toolResults,
       projectInfo: input.projectInfo,
+      runtimeCatalog: input.runtimeCatalog,
     })
 
     const summary = buildSummary(entries)
@@ -104,7 +111,10 @@ const make = Effect.gen(function* () {
     return { decision: executionDecision, shouldBypass: executionDecision.continueNormally }
   })
 
-  const integrate = Effect.fn("SessionIntegration.integrate")(function* (input: IntegrationInput) {
+  const integrate = Effect.fn("SessionIntegration.integrate")(function* (
+    input: IntegrationInput,
+    onProgress?: PipelineProgressHandler,
+  ) {
     const { executionPackage, diagnostics } = yield* orchestrator.orchestrateWithContext({
       promptText: input.promptText,
       sessionID: input.sessionID,
@@ -117,7 +127,8 @@ const make = Effect.gen(function* () {
       assistantResponses: input.assistantResponses,
       toolResults: input.toolResults,
       projectInfo: input.projectInfo,
-    })
+      runtimeCatalog: input.runtimeCatalog,
+    }, onProgress)
     const phaseNotes = diagnostics
       .filter((entry) => entry.phase !== "total")
       .map((entry) => `${entry.phase}: ${entry.result} (${entry.durationMs}ms)`)
@@ -130,8 +141,9 @@ const make = Effect.gen(function* () {
   const summary = Effect.fn("SessionIntegration.summary")(function* (pkg: ExecutionPackage) {
     const narrative = pkg.executionNarrative
     const routing = pkg.routingMetadata
+    const intelligence = pkg.executionIntelligence
     const bypassed = narrative?.executionStrategy === "bypass-high-confidence"
-    const executed = (pkg.runtimeMetrics?.executionDurationMs ?? 0) > 0
+    const internalRuntimeCompleted = (pkg.runtimeMetrics?.executionDurationMs ?? 0) > 0
     const specialists = pkg.specialistPlan?.selected?.map((match) => {
       const profile = match.specialist
       const agentID = profile?.id?.startsWith("specialist/")
@@ -140,23 +152,19 @@ const make = Effect.gen(function* () {
       return {
         name: agentID,
         role: profile?.purpose ?? profile?.description ?? profile?.name,
-        status: bypassed ? "bypassed" : executed ? "executed" : "planned",
+        // The orchestrator's internal specialist analysis is not proof that an
+        // OpenCode child-agent session actually ran. Keep UI status truthful.
+        status: bypassed ? "bypassed" : "planned",
       }
     })
-    const status = bypassed
-      ? "bypassed"
-      : specialists?.length
-        ? executed
-          ? "completed"
-          : "orchestrating"
-        : pkg.executionNotes === undefined
-          ? "idle"
-          : "busy"
+    const needsOrchestration =
+      !bypassed &&
+      ((pkg.dispatchPlan?.requiredAgents.length ?? 0) > 0 || (specialists?.length ?? 0) > 0)
+    const status = bypassed ? "bypassed" : needsOrchestration ? "planned" : "idle"
     const confidenceFactors = pkg.confidenceScore?.factors?.map((factor) => ({
       name: factor.name,
       value: factor.value,
     }))
-    const factorNotes = confidenceFactors?.map((factor) => `${factor.name}: ${Math.round(factor.value * 100)}%`)
     const phaseEntries = (pkg.executionNotes ?? [])
       .filter((note) => note.includes(": ") && note.includes("ms)"))
       .map((note) => {
@@ -167,18 +175,30 @@ const make = Effect.gen(function* () {
     const serviceNotes = (pkg.executionNotes ?? []).filter(
       (note) => !(note.includes(": ") && note.includes("ms)")),
     )
-    const dispatchNote =
-      specialists?.length && !bypassed
-        ? `Dispatch via task tool subagent_type: ${specialists.map((item) => item.name).join(", ")}`
-        : undefined
+    const recommendations = [
+      ...(intelligence?.executionRecommendations?.map((item) => item.recommendation) ?? []),
+      ...(pkg.specialistConsensus?.recommendations ?? []),
+    ].filter((item, index, all) => item.trim().length > 0 && all.indexOf(item) === index)
+    const risks =
+      intelligence?.executionRisks?.map((item) => item.risk) ??
+      narrative?.risks
+    const constraints =
+      intelligence?.executionConstraints?.map((item) => item.constraint) ??
+      narrative?.constraints
+    const workflowSuggestions = [
+      intelligence?.workflowAdvice,
+      narrative?.recommendedWorkflow,
+    ].filter((item): item is string => item !== undefined && item.trim().length > 0)
     const activity = [
-      ...(bypassed ? ["High confidence — specialist pipeline bypassed"] : []),
+      ...(bypassed ? ["High confidence — specialist planning bypassed"] : []),
       ...(specialists?.length
-        ? [`Specialists: ${specialists.map((item) => `${item.name} [${item.status}]`).join(", ")}`]
+        ? [`Planned specialists: ${specialists.map((item) => item.name).join(", ")}`]
         : []),
-      ...(dispatchNote ? [dispatchNote] : []),
+      ...(internalRuntimeCompleted
+        ? ["Internal orchestration analysis completed; child-agent dispatch not yet confirmed"]
+        : []),
       ...(routing?.selectedProviderID
-        ? [`Model: ${routing.selectedProviderID}/${routing.selectedModelID ?? "?"}`]
+        ? [`Model candidate: ${routing.selectedProviderID}/${routing.selectedModelID ?? "?"}`]
         : []),
       ...(pkg.capabilityPlan?.reason ? [`Capabilities: ${pkg.capabilityPlan.reason}`] : []),
       ...(pkg.knowledgePlan?.requests.length
@@ -191,6 +211,7 @@ const make = Effect.gen(function* () {
           : `${entry.name} → ${entry.result} (${entry.durationMs}ms)`,
       ),
     ]
+
     return {
       sessionID: pkg.sessionID as ExecutionPackageInfo["sessionID"],
       timestamp: pkg.timestamp,
@@ -198,12 +219,16 @@ const make = Effect.gen(function* () {
       confidence: pkg.confidence,
       confidenceScore: pkg.confidenceScore?.score,
       status,
-      progress: pkg.confidenceScore?.score,
-      activeWorkflow: narrative?.recommendedWorkflow,
+      progress: intelligence?.streamingMetadata?.executionProgress,
+      activeWorkflow: intelligence?.workflowAdvice ?? narrative?.recommendedWorkflow,
       specialists: specialists?.length ? specialists : undefined,
       planningSummary: pkg.planningPolicy?.label ?? narrative?.executionStrategy,
-      consensusSummary: narrative?.specialistConsensus,
-      needsOrchestration: !bypassed && (specialists?.length ?? 0) > 0,
+      consensusSummary:
+        narrative?.specialistConsensus ??
+        (pkg.specialistConsensus
+          ? `${pkg.specialistConsensus.overallConsensus} consensus (${Math.round(pkg.specialistConsensus.overallConfidence * 100)}%)`
+          : undefined),
+      needsOrchestration,
       confidenceFactors,
       phases: phaseEntries.length ? phaseEntries : undefined,
       activity: activity.length ? activity : undefined,
@@ -212,22 +237,18 @@ const make = Effect.gen(function* () {
       capabilityMatch: pkg.capabilityPlan?.reason,
       routingStrategy: routing?.routingStrategy ?? routing?.routingPolicy,
       fallbackModel: routing?.fallbackModelID,
-      repositoryIntelligence: pkg.repositoryIntelligence?.enrichedSummary ?? narrative?.repositoryFindings,
-      architectureSummary: pkg.architectureIntelligence?.summary ?? narrative?.architectureFindings,
-      dependencySummary: pkg.dependencyIntelligence?.summary ?? narrative?.dependencyFindings,
-      documentationSummary: pkg.documentationIntelligence?.summary ?? narrative?.documentationFindings,
-      verificationSummary: pkg.verificationIntelligence?.summary ?? narrative?.verificationFindings,
-      recommendations: [
-        ...(dispatchNote ? [dispatchNote] : []),
-        ...(serviceNotes ?? []),
-        ...(factorNotes ?? []),
-      ].length
-        ? [...(dispatchNote ? [dispatchNote] : []), ...(serviceNotes ?? []), ...(factorNotes ?? [])]
-        : undefined,
-      risks: narrative?.risks,
-      constraints: narrative?.constraints,
-      toolAdvice: pkg.executionIntelligence?.toolAdvice?.suggestedTools,
-      workflowSuggestions: narrative?.recommendedWorkflow ? [narrative.recommendedWorkflow] : undefined,
+      // Internal intelligence is heuristic planning material. The public Knowledge
+      // panel is populated only by real child-agent/task execution evidence.
+      repositoryIntelligence: undefined,
+      architectureSummary: undefined,
+      dependencySummary: undefined,
+      documentationSummary: undefined,
+      verificationSummary: undefined,
+      recommendations: recommendations.length ? recommendations : undefined,
+      risks: risks?.length ? risks : undefined,
+      constraints: constraints?.length ? constraints : undefined,
+      toolAdvice: intelligence?.toolAdvice?.suggestedTools,
+      workflowSuggestions: workflowSuggestions.length ? workflowSuggestions : undefined,
     } satisfies ExecutionPackageInfo
   })
 

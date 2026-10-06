@@ -7,6 +7,7 @@ const id = "internal:sidebar-orchestrator-specialists"
 function statusColor(status: string | undefined, theme: () => any) {
   if (status === "executed" || status === "completed") return theme().success
   if (status === "planned" || status === "orchestrating") return theme().warning
+  if (status === "failed") return theme().error
   if (status === "bypassed" || status === "fallback") return theme().textMuted
   return theme().text
 }
@@ -33,7 +34,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
         when={active()}
         fallback={
           <text fg={theme().textMuted}>
-            <span style={{ fg: theme().success }}>●</span> Ready — specialists will activate on low confidence
+            <span style={{ fg: theme().textMuted }}>●</span> No specialist plan yet
           </text>
         }
       >
@@ -44,7 +45,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
         </Show>
         <Show when={pkg()?.needsOrchestration && specialists().length > 0}>
           <text fg={theme().warning}>
-            Orchestrating {specialists().length} specialist{specialists().length === 1 ? "" : "s"}
+            Planned {specialists().length} specialist{specialists().length === 1 ? "" : "s"}
           </text>
         </Show>
         <For each={specialists()}>
