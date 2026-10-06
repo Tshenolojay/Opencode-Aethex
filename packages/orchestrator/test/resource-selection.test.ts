@@ -78,6 +78,50 @@ describe("SelectionEngine live runtime catalog", () => {
     })
   })
 
+  test("does not expose disabled providers or models as available", async () => {
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const catalog = yield* Catalog.Service
+        const selection = yield* SelectionEngine.Service
+        yield* catalog.replace({
+          providers: [
+            { id: "enabled-provider", name: "Enabled" },
+            { id: "disabled-provider", name: "Disabled", disabled: true },
+          ],
+          models: [
+            {
+              id: "enabled-model",
+              providerID: "enabled-provider",
+              name: "Enabled Model",
+              capabilities: { tools: true, input: ["text"], output: ["text"] },
+              status: "active",
+              enabled: true,
+              limit: { context: 64_000, output: 8_000 },
+              cost: [],
+            },
+            {
+              id: "disabled-model",
+              providerID: "enabled-provider",
+              name: "Disabled Model",
+              capabilities: { tools: true, input: ["text"], output: ["text"] },
+              status: "active",
+              enabled: false,
+              limit: { context: 64_000, output: 8_000 },
+              cost: [],
+            },
+          ],
+        })
+        return {
+          providers: yield* selection.getAvailableProviders(),
+          models: yield* selection.getAvailableModels("enabled-provider"),
+        }
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.providers).toEqual(["enabled-provider"])
+    expect(result.models).toEqual(["enabled-model"])
+  })
+
   test("isolates concurrent runtime catalog snapshots", async () => {
     const selected = await Effect.runPromise(
       Effect.gen(function* () {
