@@ -26,7 +26,7 @@ export interface OrchestrationInput {
   readonly assistantResponses: readonly string[] | undefined
   readonly toolResults: readonly string[] | undefined
   readonly projectInfo: string | undefined
-  readonly runtimeCatalog: RuntimeCatalogSnapshot | undefined
+  readonly runtimeCatalog?: RuntimeCatalogSnapshot
 }
 
 export interface OrchestrationDecision {
