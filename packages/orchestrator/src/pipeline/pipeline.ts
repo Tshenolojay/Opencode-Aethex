@@ -61,6 +61,53 @@ export interface PipelineState {
   teamPlan: import("../integration/execution-package").TeamPlan | undefined
 }
 
+export interface PipelineProgress {
+  readonly stage: string
+  readonly executionPackage: import("../integration/execution-package").ExecutionPackage
+  readonly diagnostics: readonly PhaseEntry[]
+}
+
+export type PipelineProgressHandler = (progress: PipelineProgress) => Effect.Effect<void>
+
+function currentExecutionPackage(state: PipelineState): import("../integration/execution-package").ExecutionPackage {
+  return {
+    ...state.executionPackage,
+    taskClassification: state.classification,
+    classifications: state.classifications,
+    confidence: state.confidenceLevel,
+    confidenceScore: state.confidenceScore,
+    capabilityPlan: state.capabilityPlan ?? state.executionPackage.capabilityPlan,
+    specialistPlan: state.specialistPlan ?? state.executionPackage.specialistPlan,
+    knowledgePlan: state.knowledgePlan ?? state.executionPackage.knowledgePlan,
+    dispatchPlan: state.dispatchPlan ?? state.executionPackage.dispatchPlan,
+    planningPolicy: state.policy ?? state.executionPackage.planningPolicy,
+    executionGraph: state.executionGraph ?? state.executionPackage.executionGraph,
+    knowledgeBundle: state.knowledgeBundle,
+    repositoryIntelligence: state.repoAnalysis ?? state.executionPackage.repositoryIntelligence,
+    dependencyIntelligence: state.depAnalysis ?? state.executionPackage.dependencyIntelligence,
+    architectureIntelligence: state.archAnalysis ?? state.executionPackage.architectureIntelligence,
+    documentationIntelligence: state.docAnalysis ?? state.executionPackage.documentationIntelligence,
+    verificationIntelligence: state.verAnalysis ?? state.executionPackage.verificationIntelligence,
+    contextIntelligence: state.ctxReport ?? state.executionPackage.contextIntelligence,
+    executionNotes: state.diagnostics.map(
+      (entry) => `${entry.phase}: ${entry.result} (${entry.durationMs}ms)`,
+    ),
+  }
+}
+
+function emitProgress(
+  handler: PipelineProgressHandler | undefined,
+  stage: string,
+  state: PipelineState,
+): Effect.Effect<void> {
+  if (!handler) return Effect.void
+  return handler({
+    stage,
+    executionPackage: currentExecutionPackage(state),
+    diagnostics: state.diagnostics,
+  })
+}
+
 export function createInitialState(input: OrchestrationInput): PipelineState {
   const now = Date.now()
   return {
@@ -164,16 +211,16 @@ export function createInitialState(input: OrchestrationInput): PipelineState {
 
 export type StageFn = (state: PipelineState) => Effect.Effect<PipelineState>
 
-const postFoundationStages: StageFn[] = [
-  runPlanningStage as StageFn,
-  runResourceStage as StageFn,
-  runExecutionStage as StageFn,
-  runIntelligenceStage as StageFn,
-  runIntegrationStage as StageFn,
-  runReasoningStage as StageFn,
-  runConnectorStage as StageFn,
-  runTeamStage as StageFn,
-  runCollaborationStage as StageFn,
+const postFoundationStages: readonly { readonly name: string; readonly run: StageFn }[] = [
+  { name: "planning", run: runPlanningStage as StageFn },
+  { name: "resource-management", run: runResourceStage as StageFn },
+  { name: "specialist-execution", run: runExecutionStage as StageFn },
+  { name: "intelligence", run: runIntelligenceStage as StageFn },
+  { name: "integration", run: runIntegrationStage as StageFn },
+  { name: "reasoning", run: runReasoningStage as StageFn },
+  { name: "connectors", run: runConnectorStage as StageFn },
+  { name: "team", run: runTeamStage as StageFn },
+  { name: "collaboration", run: runCollaborationStage as StageFn },
 ]
 
 function runStage(stage: StageFn, state: PipelineState): Effect.Effect<PipelineState> {
@@ -208,20 +255,41 @@ function shouldBypassSpecialists(state: PipelineState): boolean {
   return state.confidenceScore.score >= Config.minimumConfidence
 }
 
-export const runAllStages = Effect.fn("Pipeline.runAllStages")(function* (input: OrchestrationInput) {
+export const runAllStages = Effect.fn("Pipeline.runAllStages")(function* (
+  input: OrchestrationInput,
+  onProgress?: PipelineProgressHandler,
+) {
   let state = createInitialState(input)
 
   // Classify + score confidence first. High confidence skips specialist planning/execution.
   state = yield* runStage(runFoundationStage as StageFn, state)
+  yield* emitProgress(onProgress, "foundation", state)
   if (shouldBypassSpecialists(state)) {
-    return yield* buildHighConfidenceOutput(state)
+    const output = yield* buildHighConfidenceOutput(state)
+    if (onProgress) {
+      yield* onProgress({
+        stage: "finalization",
+        executionPackage: output.executionPackage,
+        diagnostics: output.diagnostics,
+      })
+    }
+    return output
   }
 
   for (const stage of postFoundationStages) {
-    state = yield* runStage(stage, state)
+    state = yield* runStage(stage.run, state)
+    yield* emitProgress(onProgress, stage.name, state)
   }
 
-  return yield* runFinalizationStage(state)
+  const output = yield* runFinalizationStage(state)
+  if (onProgress) {
+    yield* onProgress({
+      stage: "finalization",
+      executionPackage: output.executionPackage,
+      diagnostics: output.diagnostics,
+    })
+  }
+  return output
 })
 
 function buildHighConfidenceOutput(state: PipelineState): Effect.Effect<PipelineOutput> {
