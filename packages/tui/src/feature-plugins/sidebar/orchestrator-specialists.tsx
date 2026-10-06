@@ -33,7 +33,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
         when={active()}
         fallback={
           <text fg={theme().textMuted}>
-            <span style={{ fg: theme().success }}>●</span> Ready — specialists will activate on low confidence
+            <span style={{ fg: theme().textMuted }}>●</span> No specialist plan yet
           </text>
         }
       >
@@ -44,7 +44,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
         </Show>
         <Show when={pkg()?.needsOrchestration && specialists().length > 0}>
           <text fg={theme().warning}>
-            Orchestrating {specialists().length} specialist{specialists().length === 1 ? "" : "s"}
+            Planned {specialists().length} specialist{specialists().length === 1 ? "" : "s"}
           </text>
         </Show>
         <For each={specialists()}>
