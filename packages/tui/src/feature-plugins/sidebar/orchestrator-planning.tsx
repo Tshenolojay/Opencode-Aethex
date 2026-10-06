@@ -39,7 +39,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
         when={hasContent()}
         fallback={
           <text fg={theme().textMuted}>
-            <span style={{ fg: theme().success }}>●</span> Ready — planning active on prompt
+            <span style={{ fg: theme().textMuted }}>●</span> No planning output yet
           </text>
         }
       >
