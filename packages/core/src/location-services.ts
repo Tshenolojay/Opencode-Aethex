@@ -31,7 +31,6 @@ import { SkillV2 } from "./skill"
 import { SkillGuidance } from "./skill/guidance"
 import { Snapshot } from "./snapshot"
 import { SystemContextBuiltIns } from "./system-context/builtins"
-import { SystemContextOrchestration } from "./system-context/orchestration"
 import { SystemContextRegistry } from "./system-context/registry"
 import { BuiltInTools } from "./tool/builtins"
 import { ReadToolFileSystem } from "./tool/read-filesystem"
@@ -61,7 +60,6 @@ export const locationServices = LayerNode.group([
   SkillV2.node,
   SystemContextRegistry.node,
   SystemContextBuiltIns.node,
-  SystemContextOrchestration.node,
   LocationMutation.node,
   FileMutation.node,
   PermissionV2.node,
