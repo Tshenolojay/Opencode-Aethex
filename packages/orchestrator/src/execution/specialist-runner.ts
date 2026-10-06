@@ -15,6 +15,7 @@ import type { TaskType } from "../types/classification"
 import type { ExecutionPackage } from "../integration/execution-package"
 
 export interface RunnerInput {
+  readonly sessionID: string
   readonly graph: Graph
   readonly policy: PlanningPolicy
   readonly capabilityPlan: CapabilityPlan
@@ -63,6 +64,7 @@ const run: Interface["run"] = Effect.fn("SpecialistRunner.run")(function* (input
       (nodeID) =>
         recovery.withTimeout(
           recovery.attempt(() => executor.execute({
+            sessionID: input.sessionID,
             specialist: findSpecialist(input.graph, nodeID, registry),
             taskObjective: input.taskObjective,
             taskType: input.taskType,
