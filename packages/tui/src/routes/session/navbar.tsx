@@ -27,7 +27,15 @@ export function Navbar(props: { sessionID?: string }) {
     props.sessionID ? sync.data.execution_package[props.sessionID] : undefined,
   )
   const confidence = createMemo(() => execution()?.confidence)
-  const specialistCount = createMemo(() => execution()?.specialists?.length ?? 0)
+  const specialistCount = createMemo(
+    () =>
+      execution()?.specialists?.filter(
+        (specialist) =>
+          specialist.status !== "executed" &&
+          specialist.status !== "completed" &&
+          specialist.status !== "bypassed",
+      ).length ?? 0,
+  )
   const orchestrationStatus = createMemo(() => execution()?.status)
   const phaseCount = createMemo(() => execution()?.phases?.length ?? 0)
 
@@ -64,10 +72,10 @@ export function Navbar(props: { sessionID?: string }) {
                 <span fg={theme.textMuted}> · {orchestrationStatus()}</span>
               </Show>
               <Show when={specialistCount() > 0}>
-                <span fg={theme.textMuted}> · {specialistCount()} spec</span>
+                <span fg={theme.textMuted}> · {specialistCount()} spec pending</span>
               </Show>
               <Show when={phaseCount() > 0}>
-                <span fg={theme.textMuted}> · {phaseCount()} svc</span>
+                <span fg={theme.textMuted}> · {phaseCount()} stages</span>
               </Show>
             </text>
           </Show>
