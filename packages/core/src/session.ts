@@ -403,21 +403,23 @@ const layer = Layer.effect(
             )
             if (!SessionInput.equivalent(admitted, expected))
               return yield* new PromptConflictError({ sessionID: input.sessionID, messageID })
-            const countRow = yield* db
+            const countRowResult = yield* db
               .select({ count: sql<number>`count(*)` })
               .from(SessionMessageTable)
               .where(eq(SessionMessageTable.session_id, input.sessionID))
               .get()
-              .pipe(Effect.orSucceed(undefined))
+              .pipe(Effect.option)
+            const countRow = Option.isSome(countRowResult) ? countRowResult.value : undefined
             const conversationLength = Number(countRow?.count ?? 0)
-            const recentRows = yield* db
+            const recentRowsResult = yield* db
               .select()
               .from(SessionMessageTable)
               .where(eq(SessionMessageTable.session_id, input.sessionID))
               .orderBy(desc(SessionMessageTable.seq))
               .limit(24)
               .all()
-              .pipe(Effect.orSucceed([]))
+              .pipe(Effect.option)
+            const recentRows = Option.isSome(recentRowsResult) ? recentRowsResult.value : []
             const recentMessages = (
               yield* Effect.forEach(recentRows.toReversed(), (row) => decode(row).pipe(Effect.option))
             ).flatMap((message) => (Option.isSome(message) ? [message.value] : []))
@@ -444,19 +446,20 @@ const layer = Layer.effect(
               })
               .slice(-8)
             const branch = yield* getBranch(session.location.directory)
-            const repositoryEntries = yield* Effect.gen(function* () {
+            const repositoryEntriesResult = yield* Effect.gen(function* () {
               const filesystem = yield* FileSystem.Service
               return yield* filesystem.glob(new FileSystem.GlobInput({ pattern: "**/*", limit: 100_001 }))
             }).pipe(
               Effect.provide(locations.get(session.location)),
-              Effect.orSucceed([]),
+              Effect.option,
             )
+            const repositoryEntries = Option.isSome(repositoryEntriesResult) ? repositoryEntriesResult.value : []
             const repositorySize = repositoryEntries.length
             const contextAvailable =
               repositorySize > 0 ||
               recentMessages.length > 0 ||
               (prompt.files?.length ?? 0) > 0
-            const runtimeCatalog = yield* Effect.gen(function* () {
+            const runtimeCatalogResult = yield* Effect.gen(function* () {
               const catalog = yield* Catalog.Service
               const [providers, models, defaultModel] = yield* Effect.all(
                 [catalog.provider.available(), catalog.model.available(), catalog.model.default()],
@@ -496,8 +499,9 @@ const layer = Layer.effect(
               }
             }).pipe(
               Effect.provide(locations.get(session.location)),
-              Effect.orSucceed(undefined),
+              Effect.option,
             )
+            const runtimeCatalog = Option.isSome(runtimeCatalogResult) ? runtimeCatalogResult.value : undefined
             // Orchestrate BEFORE waking the model so confidence/specialists gate and TUI updates live.
             if (!Flag.OPENCODE_DISABLE_ORCHESTRATOR) {
               const pending: ExecutionPackageInfo = {
