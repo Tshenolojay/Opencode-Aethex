@@ -98,7 +98,7 @@ import { ExecutionGraph as ExecutionGraphBuilder } from "./planner/execution-gra
 import { RuntimeCache } from "./runtime/runtime-cache"
 import { RuntimeValidator } from "./runtime/runtime-validator"
 import { RuntimeFallback } from "./runtime/runtime-fallback"
-import { runAllStages, createInitialState } from "./pipeline/pipeline"
+import { runAllStages, type PipelineProgressHandler } from "./pipeline/pipeline"
 import { ExecutionSummaryView } from "./views/execution-summary-view"
 import { RepositoryView } from "./views/repository-view"
 import { ArchitectureView } from "./views/architecture-view"
@@ -168,7 +168,10 @@ export type { PhaseEntry }
 
 export interface Interface {
   readonly orchestrate: (input: OrchestrationInput) => Effect.Effect<OrchestrationDecision>
-  readonly orchestrateWithContext: (input: OrchestrationInput) => Effect.Effect<{
+  readonly orchestrateWithContext: (
+    input: OrchestrationInput,
+    onProgress?: PipelineProgressHandler,
+  ) => Effect.Effect<{
     readonly decision: OrchestrationDecision
     readonly timing: TimingInfo
     readonly diagnostics: readonly PhaseEntry[]
@@ -395,8 +398,11 @@ const orchestrate = Effect.fn("OrchestratorService.orchestrate")(function* (inpu
   }
 })
 
-const orchestrateWithContext = Effect.fn("OrchestratorService.orchestrateWithContext")(function* (input) {
-  const output = yield* runAllStages(input)
+const orchestrateWithContext = Effect.fn("OrchestratorService.orchestrateWithContext")(function* (
+  input,
+  onProgress?: PipelineProgressHandler,
+) {
+  const output = yield* runAllStages(input, onProgress)
   return output as {
     decision: OrchestrationDecision
     timing: TimingInfo
