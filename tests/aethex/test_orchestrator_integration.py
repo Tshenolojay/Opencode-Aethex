@@ -72,8 +72,8 @@ def test_live_runtime_catalog_bridge_is_session_isolated() -> None:
     assert "const runtimeCatalog =" in session
     assert "Catalog.Service" in session
     assert "runtimeCatalog," in session
-    assert "FiberRef.make<RuntimeCatalogSnapshot>" in catalog
-    assert "catalog.replace(input.runtimeCatalog)" in orchestrator
+    assert "Context.Reference<RuntimeCatalogSnapshot>" in catalog
+    assert "Effect.provideService(Catalog.RuntimeCatalog, input.runtimeCatalog)" in orchestrator
     assert "modelCatalog.availableModels()" in selector
     assert "providerCatalog.availableProviders()" in selector
 
