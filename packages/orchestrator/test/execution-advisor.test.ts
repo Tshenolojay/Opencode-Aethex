@@ -10,7 +10,7 @@ describe("ExecutionAdvisor tool advice", () => {
       ...base,
       taskClassification: {
         ...base.taskClassification,
-        type: "debug" as const,
+        type: "debugging" as const,
         complexity: 5,
         requiresSearch: true,
         requiresContext: true,
