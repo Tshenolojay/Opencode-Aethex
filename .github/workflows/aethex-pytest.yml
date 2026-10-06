@@ -43,12 +43,18 @@ jobs:
       - name: Typecheck orchestrator
         run: bun run --cwd packages/orchestrator typecheck
 
-      - name: Run focused Aethex integration tests
+      - name: Run focused orchestrator integration tests
+        working-directory: packages/orchestrator
         run: >
           bun test
-          packages/orchestrator/test/session-integration.test.ts
-          packages/orchestrator/test/execution-advisor.test.ts
-          packages/orchestrator/test/resource-selection.test.ts
-          packages/core/test/tool-task.test.ts
-          packages/core/test/system-context-orchestration.test.ts
-          packages/core/test/agent.test.ts
+          test/session-integration.test.ts
+          test/execution-advisor.test.ts
+          test/resource-selection.test.ts
+
+      - name: Run focused core Aethex integration tests
+        working-directory: packages/core
+        run: >
+          bun test
+          test/tool-task.test.ts
+          test/system-context-orchestration.test.ts
+          test/agent.test.ts
