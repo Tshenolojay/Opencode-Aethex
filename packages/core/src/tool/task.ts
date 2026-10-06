@@ -5,6 +5,7 @@ import { Effect, Layer, Schema } from "effect"
 import { AgentV2 } from "../agent"
 import { Database } from "../database/database"
 import { EventV2 } from "../event"
+import { ExecutionPackage as ExecutionPackageContract } from "@opencode-ai/schema/execution-package"
 import { InstallationVersion } from "../installation/version"
 import { PermissionV2 } from "../permission"
 import { SessionRunner } from "../session/runner"
@@ -13,6 +14,7 @@ import { SessionMessage } from "../session/message"
 import { Prompt } from "../session/prompt"
 import { SessionSchema } from "../session/schema"
 import { SessionStore } from "../session/store"
+import { getExecutionPackage, setExecutionPackage } from "../session/execution-package-store"
 import { SessionV1 } from "../v1/session"
 import { Slug } from "../util/slug"
 import { makeLocationNode } from "../effect/app-node"
@@ -57,6 +59,54 @@ const layer = Layer.effectDiscard(
     const sessions = yield* SessionStore.Service
     const runner = yield* SessionRunner.Service
     const events = yield* EventV2.Service
+
+    const updateSpecialistStatus = Effect.fn("TaskTool.updateSpecialistStatus")(function* (input: {
+      parentSessionID: SessionSchema.ID
+      specialist: string
+      role?: string
+      status: string
+      childSessionID?: SessionSchema.ID
+      note?: string
+    }) {
+      const current = getExecutionPackage(input.parentSessionID)
+      const existing = current?.specialists ?? []
+      const found = existing.some((item) => item.name === input.specialist)
+      const specialists = found
+        ? existing.map((item) =>
+            item.name === input.specialist
+              ? { ...item, role: item.role ?? input.role, status: input.status }
+              : item,
+          )
+        : [...existing, { name: input.specialist, role: input.role, status: input.status }]
+      const activity = [
+        ...(current?.activity ?? []),
+        input.note ??
+          `Specialist ${input.specialist}: ${input.status}${input.childSessionID ? ` (${input.childSessionID})` : ""}`,
+      ].slice(-12)
+      const next = {
+        ...(current ?? {
+          sessionID: input.parentSessionID,
+          timestamp: Date.now(),
+        }),
+        timestamp: Date.now(),
+        status: current?.status === "bypassed" ? "orchestrating" : (current?.status ?? "orchestrating"),
+        specialists,
+        needsOrchestration: true,
+        activity,
+      } satisfies typeof ExecutionPackageContract.Info.Type
+      setExecutionPackage(input.parentSessionID, next)
+      yield* Effect.all([
+        events.publish(ExecutionPackageContract.Updated, {
+          sessionID: input.parentSessionID,
+          package: next,
+        }),
+        events.publish(ExecutionPackageContract.SpecialistPlanUpdated, {
+          sessionID: input.parentSessionID,
+          specialists,
+          consensusSummary: next.consensusSummary,
+        }),
+      ])
+    })
 
     yield* tools
       .register({
@@ -151,6 +201,15 @@ const layer = Layer.effectDiscard(
                   return created
                 }))
 
+              yield* updateSpecialistStatus({
+                parentSessionID: context.sessionID,
+                specialist: input.subagent_type,
+                role: specialist.description,
+                status: "running",
+                childSessionID: child.id,
+                note: `Started ${input.subagent_type} specialist in child session ${child.id}`,
+              })
+
               const messageID = SessionMessage.ID.create()
               const prompt = Prompt.fromUserMessage({ text: input.prompt })
               yield* SessionInput.admit(db, events, {
@@ -164,15 +223,34 @@ const layer = Layer.effectDiscard(
               Effect.flatMap(({ child }) =>
                 runner.run({ sessionID: child.id, force: true }).pipe(
                   Effect.andThen(sessions.context(child.id)),
-                  Effect.map((messages) => {
+                  Effect.flatMap((messages) => {
                     const text = assistantText(messages)
-                    return {
-                      sessionID: child.id,
-                      agent: child.agent ?? input.subagent_type,
-                      status: "completed" as const,
-                      text: text || "Subagent completed without a text response.",
-                    }
+                    return updateSpecialistStatus({
+                      parentSessionID: context.sessionID,
+                      specialist: input.subagent_type,
+                      role: specialist.description,
+                      status: "executed",
+                      childSessionID: child.id,
+                      note: `Completed ${input.subagent_type} specialist in child session ${child.id}`,
+                    }).pipe(
+                      Effect.as({
+                        sessionID: child.id,
+                        agent: child.agent ?? input.subagent_type,
+                        status: "completed" as const,
+                        text: text || "Subagent completed without a text response.",
+                      }),
+                    )
                   }),
+                  Effect.tapError(() =>
+                    updateSpecialistStatus({
+                      parentSessionID: context.sessionID,
+                      specialist: input.subagent_type,
+                      role: specialist.description,
+                      status: "failed",
+                      childSessionID: child.id,
+                      note: `Failed ${input.subagent_type} specialist in child session ${child.id}`,
+                    }).pipe(Effect.ignore),
+                  ),
                 ),
               ),
               Effect.mapError((error) =>
