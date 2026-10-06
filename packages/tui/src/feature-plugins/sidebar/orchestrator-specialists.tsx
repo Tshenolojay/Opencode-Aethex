@@ -7,6 +7,7 @@ const id = "internal:sidebar-orchestrator-specialists"
 function statusColor(status: string | undefined, theme: () => any) {
   if (status === "executed" || status === "completed") return theme().success
   if (status === "planned" || status === "orchestrating") return theme().warning
+  if (status === "failed") return theme().error
   if (status === "bypassed" || status === "fallback") return theme().textMuted
   return theme().text
 }
