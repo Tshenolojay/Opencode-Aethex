@@ -2,6 +2,7 @@ export * as SessionV2 from "./session"
 export * from "./session/schema"
 
 import { DateTime, Effect, Layer, Schema, Context, Stream, Option, pipe, Duration } from "effect"
+import { Catalog } from "./catalog"
 import { ListAnchor } from "@opencode-ai/schema/session"
 import { and, asc, desc, eq, gt, like, lt, or, sql, type SQL } from "drizzle-orm"
 import { ProjectV2 } from "./project"
@@ -455,6 +456,48 @@ const layer = Layer.effect(
               repositorySize > 0 ||
               recentMessages.length > 0 ||
               (prompt.files?.length ?? 0) > 0
+            const runtimeCatalog = yield* Effect.gen(function* () {
+              const catalog = yield* Catalog.Service
+              const [providers, models, defaultModel] = yield* Effect.all(
+                [catalog.provider.available(), catalog.model.available(), catalog.model.default()],
+                { concurrency: "unbounded" },
+              )
+              return {
+                providers: providers.map((provider) => ({
+                  id: provider.id,
+                  name: provider.name,
+                  disabled: provider.disabled,
+                })),
+                models: models.map((model) => ({
+                  id: model.id,
+                  providerID: model.providerID,
+                  family: model.family,
+                  name: model.name,
+                  capabilities: {
+                    tools: model.capabilities.tools,
+                    input: model.capabilities.input,
+                    output: model.capabilities.output,
+                  },
+                  status: model.status,
+                  enabled: model.enabled,
+                  limit: {
+                    context: model.limit.context,
+                    input: model.limit.input,
+                    output: model.limit.output,
+                  },
+                  cost: model.cost.map((cost) => ({
+                    input: cost.input,
+                    output: cost.output,
+                  })),
+                })),
+                defaultModel: defaultModel
+                  ? { providerID: defaultModel.providerID, modelID: defaultModel.id }
+                  : undefined,
+              }
+            }).pipe(
+              Effect.provide(locations.get(session.location)),
+              Effect.orSucceed(undefined),
+            )
             // Orchestrate BEFORE waking the model so confidence/specialists gate and TUI updates live.
             if (!Flag.OPENCODE_DISABLE_ORCHESTRATOR) {
               const pending: ExecutionPackageInfo = {
@@ -495,6 +538,7 @@ const layer = Layer.effect(
                       branch === undefined ? undefined : `branch=${branch}`,
                       `repositoryFiles=${repositorySize}`,
                     ].filter((value): value is string => value !== undefined).join("\n"),
+                    runtimeCatalog,
                   }, (progress) =>
                     Effect.gen(function* () {
                       const progressInfo = yield* integration.value.summary(progress.executionPackage)
