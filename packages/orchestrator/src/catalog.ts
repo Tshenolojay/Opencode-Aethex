@@ -1,6 +1,6 @@
 export * as Catalog from "./catalog"
 
-import { Context, Effect, Layer } from "effect"
+import { Context, Effect, FiberRef, Layer } from "effect"
 
 export interface ModelData {
   readonly id: string
@@ -50,35 +50,53 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/v2
 const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
-    let providers: ProviderData[] = []
-    let models: ModelData[] = []
-    let defaultModel: ModelData | undefined
+    // SessionIntegration is global, but orchestration can run concurrently for
+    // different locations. Keep each runtime catalog snapshot fiber-local so a
+    // prompt can never route against another session's provider/model inventory.
+    const current = yield* FiberRef.make<RuntimeCatalogSnapshot>({
+      providers: [],
+      models: [],
+    })
+
+    const read = FiberRef.get(current)
 
     const replace: Interface["replace"] = Effect.fn("Catalog.replace")(function* (snapshot) {
-      providers = [...snapshot.providers]
-      models = [...snapshot.models]
-      defaultModel = snapshot.defaultModel
-        ? models.find(
-            (model) =>
-              model.providerID === snapshot.defaultModel?.providerID &&
-              model.id === snapshot.defaultModel?.modelID,
-          )
-        : undefined
+      yield* FiberRef.set(current, {
+        providers: [...snapshot.providers],
+        models: [...snapshot.models],
+        defaultModel: snapshot.defaultModel,
+      })
     })
 
     return Service.of({
       replace,
       provider: {
-        get: (id) => Effect.succeed(providers.find((p) => p.id === id)),
-        all: () => Effect.succeed(providers),
-        available: () => Effect.succeed(providers.filter((p) => !p.disabled)),
+        get: (id) => Effect.map(read, (snapshot) => snapshot.providers.find((provider) => provider.id === id)),
+        all: () => Effect.map(read, (snapshot) => [...snapshot.providers]),
+        available: () =>
+          Effect.map(read, (snapshot) => snapshot.providers.filter((provider) => !provider.disabled)),
       },
       model: {
-        get: (providerID, modelID) => Effect.succeed(models.find((m) => m.providerID === providerID && m.id === modelID)),
-        all: () => Effect.succeed(models),
-        available: () => Effect.succeed(models.filter((m) => m.enabled)),
-        default: () => Effect.succeed(defaultModel),
-        small: (providerID) => Effect.succeed(models.find((m) => m.providerID === providerID && m.limit.context <= 32000)),
+        get: (providerID, modelID) =>
+          Effect.map(read, (snapshot) =>
+            snapshot.models.find((model) => model.providerID === providerID && model.id === modelID),
+          ),
+        all: () => Effect.map(read, (snapshot) => [...snapshot.models]),
+        available: () => Effect.map(read, (snapshot) => snapshot.models.filter((model) => model.enabled)),
+        default: () =>
+          Effect.map(read, (snapshot) =>
+            snapshot.defaultModel
+              ? snapshot.models.find(
+                  (model) =>
+                    model.providerID === snapshot.defaultModel?.providerID &&
+                    model.id === snapshot.defaultModel?.modelID,
+                )
+              : undefined,
+          ),
+        small: (providerID) =>
+          Effect.map(read, (snapshot) =>
+            snapshot.models.find((model) => model.providerID === providerID && model.limit.context <= 32000),
+          ),
       },
     })
   }),
