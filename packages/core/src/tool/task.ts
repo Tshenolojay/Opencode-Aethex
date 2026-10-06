@@ -3,6 +3,7 @@ export * as TaskTool from "./task"
 import { ToolFailure } from "@opencode-ai/llm"
 import { Effect, Layer, Schema } from "effect"
 import { AgentV2 } from "../agent"
+import { Database } from "../database/database"
 import { EventV2 } from "../event"
 import { InstallationVersion } from "../installation/version"
 import { PermissionV2 } from "../permission"
@@ -50,6 +51,7 @@ function assistantText(messages: readonly SessionMessage.Message[]): string {
 const layer = Layer.effectDiscard(
   Effect.gen(function* () {
     const tools = yield* Tools.Service
+    const { db } = yield* Database.Service
     const agents = yield* AgentV2.Service
     const permission = yield* PermissionV2.Service
     const sessions = yield* SessionStore.Service
@@ -151,7 +153,7 @@ const layer = Layer.effectDiscard(
 
               const messageID = SessionMessage.ID.create()
               const prompt = Prompt.fromUserMessage({ text: input.prompt })
-              yield* SessionInput.admit((yield* import("../database/database")).Database.Service ? undefined as never : undefined as never, events, {
+              yield* SessionInput.admit(db, events, {
                 id: messageID,
                 sessionID: child.id,
                 prompt,
@@ -195,5 +197,6 @@ export const node = makeLocationNode({
     SessionStore.node,
     SessionExecution.node,
     EventV2.node,
+    Database.node,
   ],
 })
