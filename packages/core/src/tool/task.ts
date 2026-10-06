@@ -67,6 +67,7 @@ const layer = Layer.effectDiscard(
       status: string
       childSessionID?: SessionSchema.ID
       note?: string
+      resultText?: string
     }) {
       const current = getExecutionPackage(input.parentSessionID)
       const existing = current?.specialists ?? []
@@ -94,6 +95,20 @@ const layer = Layer.effectDiscard(
             : remaining.length === 0
               ? "specialists-complete"
               : "planned"
+      const knowledgeUpdate =
+        input.status === "executed" && input.resultText?.trim()
+          ? input.specialist === "repository"
+            ? { repositoryIntelligence: input.resultText.trim() }
+            : input.specialist === "architecture"
+              ? { architectureSummary: input.resultText.trim() }
+              : input.specialist === "dependency"
+                ? { dependencySummary: input.resultText.trim() }
+                : input.specialist === "documentation"
+                  ? { documentationSummary: input.resultText.trim() }
+                  : input.specialist === "verification"
+                    ? { verificationSummary: input.resultText.trim() }
+                    : {}
+          : {}
       const next = {
         ...(current ?? {
           sessionID: input.parentSessionID,
@@ -104,6 +119,7 @@ const layer = Layer.effectDiscard(
         specialists,
         needsOrchestration: remaining.length > 0,
         activity,
+        ...knowledgeUpdate,
       } satisfies typeof ExecutionPackageContract.Info.Type
       setExecutionPackage(input.parentSessionID, next)
       yield* Effect.all([
@@ -243,6 +259,7 @@ const layer = Layer.effectDiscard(
                       status: "executed",
                       childSessionID: child.id,
                       note: `Completed ${input.subagent_type} specialist in child session ${child.id}`,
+                      resultText: text,
                     }).pipe(
                       Effect.as({
                         sessionID: child.id,
