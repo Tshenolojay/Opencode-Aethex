@@ -37,10 +37,15 @@ describe("SelectionEngine live runtime catalog", () => {
   test("selects a model hydrated from the runtime snapshot", async () => {
     const result = await Effect.runPromise(
       Effect.gen(function* () {
-        const catalog = yield* Catalog.Service
         const selection = yield* SelectionEngine.Service
 
-        yield* catalog.replace({
+        return {
+          providers: yield* selection.getAvailableProviders(),
+          models: yield* selection.getAvailableModels("live-provider"),
+          selected: yield* selection.selectForTask(["analysis", "reasoning", "tool-use"]),
+        }
+      }).pipe(
+        Effect.provideService(Catalog.RuntimeCatalog, {
           providers: [{ id: "live-provider", name: "Live Provider" }],
           models: [
             {
@@ -60,14 +65,9 @@ describe("SelectionEngine live runtime catalog", () => {
             },
           ],
           defaultModel: { providerID: "live-provider", modelID: "deep-reasoner-code" },
-        })
-
-        return {
-          providers: yield* selection.getAvailableProviders(),
-          models: yield* selection.getAvailableModels("live-provider"),
-          selected: yield* selection.selectForTask(["analysis", "reasoning", "tool-use"]),
-        }
-      }).pipe(Effect.provide(layer)),
+        }),
+        Effect.provide(layer),
+      ),
     )
 
     expect(result.providers).toEqual(["live-provider"])
@@ -81,9 +81,13 @@ describe("SelectionEngine live runtime catalog", () => {
   test("does not expose disabled providers or models as available", async () => {
     const result = await Effect.runPromise(
       Effect.gen(function* () {
-        const catalog = yield* Catalog.Service
         const selection = yield* SelectionEngine.Service
-        yield* catalog.replace({
+        return {
+          providers: yield* selection.getAvailableProviders(),
+          models: yield* selection.getAvailableModels("enabled-provider"),
+        }
+      }).pipe(
+        Effect.provideService(Catalog.RuntimeCatalog, {
           providers: [
             { id: "enabled-provider", name: "Enabled" },
             { id: "disabled-provider", name: "Disabled", disabled: true },
@@ -110,12 +114,9 @@ describe("SelectionEngine live runtime catalog", () => {
               cost: [],
             },
           ],
-        })
-        return {
-          providers: yield* selection.getAvailableProviders(),
-          models: yield* selection.getAvailableModels("enabled-provider"),
-        }
-      }).pipe(Effect.provide(layer)),
+        }),
+        Effect.provide(layer),
+      ),
     )
 
     expect(result.providers).toEqual(["enabled-provider"])
@@ -125,12 +126,14 @@ describe("SelectionEngine live runtime catalog", () => {
   test("isolates concurrent runtime catalog snapshots", async () => {
     const selected = await Effect.runPromise(
       Effect.gen(function* () {
-        const catalog = yield* Catalog.Service
         const selection = yield* SelectionEngine.Service
 
         const pick = (providerID: string, modelID: string) =>
           Effect.gen(function* () {
-            yield* catalog.replace({
+            yield* Effect.yieldNow
+            return yield* selection.selectForTask(["analysis", "tool-use"])
+          }).pipe(
+            Effect.provideService(Catalog.RuntimeCatalog, {
               providers: [{ id: providerID, name: providerID }],
               models: [
                 {
@@ -149,10 +152,8 @@ describe("SelectionEngine live runtime catalog", () => {
                 },
               ],
               defaultModel: { providerID, modelID },
-            })
-            yield* Effect.yieldNow
-            return yield* selection.selectForTask(["analysis", "tool-use"])
-          })
+            }),
+          )
 
         return yield* Effect.all(
           [pick("provider-a", "reasoner-code-a"), pick("provider-b", "reasoner-code-b")],
