@@ -9,6 +9,7 @@ import { ExecutionPackage as ExecutionPackageContract } from "@opencode-ai/schem
 import { InstallationVersion } from "../installation/version"
 import { PermissionV2 } from "../permission"
 import { SessionRunner } from "../session/runner"
+import * as SessionRunnerLLM from "../session/runner/llm"
 import { SessionInput } from "../session/input"
 import { SessionMessage } from "../session/message"
 import { Prompt } from "../session/prompt"
@@ -301,7 +302,7 @@ export const node = makeLocationNode({
     AgentV2.node,
     PermissionV2.node,
     SessionStore.node,
-    SessionRunner.node,
+    SessionRunnerLLM.node,
     EventV2.node,
     Database.node,
   ],
