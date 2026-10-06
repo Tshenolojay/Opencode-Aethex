@@ -14,6 +14,7 @@ import { SessionV2 } from "@opencode-ai/core/session"
 import { getExecutionPackage } from "@opencode-ai/core/session/execution-package-store"
 import { SessionProjector } from "@opencode-ai/core/session/projector"
 import { SessionRunner } from "@opencode-ai/core/session/runner"
+import * as SessionRunnerLLM from "@opencode-ai/core/session/runner/llm"
 import { SessionInputTable, SessionTable } from "@opencode-ai/core/session/sql"
 import { TaskTool } from "@opencode-ai/core/tool/task"
 import { ToolRegistry } from "@opencode-ai/core/tool/registry"
@@ -57,7 +58,7 @@ const it = testEffect(
     ]),
     [
       [PermissionV2.node, permission],
-      [SessionRunner.node, runner],
+      [SessionRunnerLLM.node, runner],
       [ToolOutputStore.node, ToolOutputStore.nodeWithoutConfig],
     ],
   ),
