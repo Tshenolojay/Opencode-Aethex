@@ -33,7 +33,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
         }
         fallback={
           <text fg={theme().textMuted}>
-            <span style={{ fg: theme().success }}>●</span> Ready — knowledge gathering on prompt
+            <span style={{ fg: theme().textMuted }}>●</span> No collected knowledge summary yet
           </text>
         }
       >
