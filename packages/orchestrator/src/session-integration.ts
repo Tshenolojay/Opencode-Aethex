@@ -78,7 +78,7 @@ const make = Effect.gen(function* () {
       assistantResponses: input.assistantResponses,
       toolResults: input.toolResults,
       projectInfo: input.projectInfo,
-    }, onProgress)
+    })
 
     const summary = buildSummary(entries)
 
@@ -124,7 +124,7 @@ const make = Effect.gen(function* () {
       assistantResponses: input.assistantResponses,
       toolResults: input.toolResults,
       projectInfo: input.projectInfo,
-    })
+    }, onProgress)
     const phaseNotes = diagnostics
       .filter((entry) => entry.phase !== "total")
       .map((entry) => `${entry.phase}: ${entry.result} (${entry.durationMs}ms)`)
