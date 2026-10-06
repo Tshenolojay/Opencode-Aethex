@@ -77,4 +77,48 @@ describe("SelectionEngine live runtime catalog", () => {
       modelID: "deep-reasoner-code",
     })
   })
+
+  test("isolates concurrent runtime catalog snapshots", async () => {
+    const selected = await Effect.runPromise(
+      Effect.gen(function* () {
+        const catalog = yield* Catalog.Service
+        const selection = yield* SelectionEngine.Service
+
+        const pick = (providerID: string, modelID: string) =>
+          Effect.gen(function* () {
+            yield* catalog.replace({
+              providers: [{ id: providerID, name: providerID }],
+              models: [
+                {
+                  id: modelID,
+                  providerID,
+                  name: modelID,
+                  capabilities: {
+                    tools: true,
+                    input: ["text", "image"],
+                    output: ["text", "json", "stream"],
+                  },
+                  status: "active",
+                  enabled: true,
+                  limit: { context: 128_000, output: 16_000 },
+                  cost: [{ input: 0.000001, output: 0.000002 }],
+                },
+              ],
+              defaultModel: { providerID, modelID },
+            })
+            yield* Effect.yieldNow
+            return yield* selection.selectForTask(["analysis", "tool-use"])
+          })
+
+        return yield* Effect.all(
+          [pick("provider-a", "reasoner-code-a"), pick("provider-b", "reasoner-code-b")],
+          { concurrency: "unbounded" },
+        )
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(selected[0]).toMatchObject({ providerID: "provider-a", modelID: "reasoner-code-a" })
+    expect(selected[1]).toMatchObject({ providerID: "provider-b", modelID: "reasoner-code-b" })
+  })
+
 })
