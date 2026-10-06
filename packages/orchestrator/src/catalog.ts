@@ -1,6 +1,6 @@
 export * as Catalog from "./catalog"
 
-import { Context, Effect, FiberRef, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 
 export interface ModelData {
   readonly id: string
@@ -29,8 +29,14 @@ export interface RuntimeCatalogSnapshot {
   }
 }
 
+export const RuntimeCatalog = Context.Reference<RuntimeCatalogSnapshot>(
+  "@opencode/orchestrator/RuntimeCatalog",
+  {
+    defaultValue: () => ({ providers: [], models: [] }),
+  },
+)
+
 export interface Interface {
-  readonly replace: (snapshot: RuntimeCatalogSnapshot) => Effect.Effect<void>
   readonly provider: {
     readonly get: (providerID: string) => Effect.Effect<ProviderData | undefined>
     readonly all: () => Effect.Effect<ProviderData[]>
@@ -47,58 +53,37 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/v2/Catalog") {}
 
-const layer = Layer.effect(
+const layer = Layer.succeed(
   Service,
-  Effect.gen(function* () {
-    // SessionIntegration is global, but orchestration can run concurrently for
-    // different locations. Keep each runtime catalog snapshot fiber-local so a
-    // prompt can never route against another session's provider/model inventory.
-    const current = yield* FiberRef.make<RuntimeCatalogSnapshot>({
-      providers: [],
-      models: [],
-    })
-
-    const read = FiberRef.get(current)
-
-    const replace: Interface["replace"] = Effect.fn("Catalog.replace")(function* (snapshot) {
-      yield* FiberRef.set(current, {
-        providers: [...snapshot.providers],
-        models: [...snapshot.models],
-        defaultModel: snapshot.defaultModel,
-      })
-    })
-
-    return Service.of({
-      replace,
-      provider: {
-        get: (id) => Effect.map(read, (snapshot) => snapshot.providers.find((provider) => provider.id === id)),
-        all: () => Effect.map(read, (snapshot) => [...snapshot.providers]),
-        available: () =>
-          Effect.map(read, (snapshot) => snapshot.providers.filter((provider) => !provider.disabled)),
-      },
-      model: {
-        get: (providerID, modelID) =>
-          Effect.map(read, (snapshot) =>
-            snapshot.models.find((model) => model.providerID === providerID && model.id === modelID),
-          ),
-        all: () => Effect.map(read, (snapshot) => [...snapshot.models]),
-        available: () => Effect.map(read, (snapshot) => snapshot.models.filter((model) => model.enabled)),
-        default: () =>
-          Effect.map(read, (snapshot) =>
-            snapshot.defaultModel
-              ? snapshot.models.find(
-                  (model) =>
-                    model.providerID === snapshot.defaultModel?.providerID &&
-                    model.id === snapshot.defaultModel?.modelID,
-                )
-              : undefined,
-          ),
-        small: (providerID) =>
-          Effect.map(read, (snapshot) =>
-            snapshot.models.find((model) => model.providerID === providerID && model.limit.context <= 32000),
-          ),
-      },
-    })
+  Service.of({
+    provider: {
+      get: (id) => Effect.map(RuntimeCatalog, (snapshot) => snapshot.providers.find((provider) => provider.id === id)),
+      all: () => Effect.map(RuntimeCatalog, (snapshot) => [...snapshot.providers]),
+      available: () =>
+        Effect.map(RuntimeCatalog, (snapshot) => snapshot.providers.filter((provider) => !provider.disabled)),
+    },
+    model: {
+      get: (providerID, modelID) =>
+        Effect.map(RuntimeCatalog, (snapshot) =>
+          snapshot.models.find((model) => model.providerID === providerID && model.id === modelID),
+        ),
+      all: () => Effect.map(RuntimeCatalog, (snapshot) => [...snapshot.models]),
+      available: () => Effect.map(RuntimeCatalog, (snapshot) => snapshot.models.filter((model) => model.enabled)),
+      default: () =>
+        Effect.map(RuntimeCatalog, (snapshot) =>
+          snapshot.defaultModel
+            ? snapshot.models.find(
+                (model) =>
+                  model.providerID === snapshot.defaultModel?.providerID &&
+                  model.id === snapshot.defaultModel?.modelID,
+              )
+            : undefined,
+        ),
+      small: (providerID) =>
+        Effect.map(RuntimeCatalog, (snapshot) =>
+          snapshot.models.find((model) => model.providerID === providerID && model.limit.context <= 32000),
+        ),
+    },
   }),
 )
 
