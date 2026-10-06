@@ -31,6 +31,8 @@ import { SessionHistory } from "../history"
 import { SessionInput } from "../input"
 import { SessionSchema } from "../schema"
 import { SessionStore } from "../store"
+import { getExecutionPackage, setExecutionPackage } from "../execution-package-store"
+import { ExecutionPackage as ExecutionPackageContract } from "@opencode-ai/schema/execution-package"
 import { type RunError, Service } from "./index"
 import { SessionRunnerModel } from "./model"
 import { createLLMEventPublisher } from "./publish-llm-event"
@@ -203,6 +205,36 @@ const layer = Layer.effect(
       const system =
         initialized ?? (yield* SessionContextEpoch.prepare(db, events, loadSystemContext(agent, session.id), session.id))
       const model = yield* models.resolve(session)
+      const currentExecutionPackage = getExecutionPackage(session.id)
+      const modelExecutionPackage = {
+        ...(currentExecutionPackage ?? {
+          sessionID: session.id,
+          timestamp: Date.now(),
+        }),
+        timestamp: Date.now(),
+        provider: model.provider,
+        model: model.id,
+        routingStrategy: "session-runner",
+        activity: [
+          ...(currentExecutionPackage?.activity ?? []),
+          `SessionRunner model: ${model.provider}/${model.id}`,
+        ].slice(-12),
+      } satisfies typeof ExecutionPackageContract.Info.Type
+      setExecutionPackage(session.id, modelExecutionPackage)
+      yield* Effect.all([
+        events.publish(ExecutionPackageContract.Updated, {
+          sessionID: session.id,
+          package: modelExecutionPackage,
+        }),
+        events.publish(ExecutionPackageContract.ModelSelectionUpdated, {
+          sessionID: session.id,
+          provider: model.provider,
+          model: model.id,
+          capabilityMatch: modelExecutionPackage.capabilityMatch,
+          routingStrategy: modelExecutionPackage.routingStrategy,
+          fallbackModel: modelExecutionPackage.fallbackModel,
+        }),
+      ])
       const entries = yield* SessionHistory.entriesForRunner(db, session.id, system.baselineSeq)
       const context = entries.map((entry) => entry.message)
       const isLastStep = agent.info?.steps !== undefined && currentStep >= agent.info.steps
