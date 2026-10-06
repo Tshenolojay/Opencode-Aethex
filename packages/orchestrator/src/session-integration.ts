@@ -6,6 +6,7 @@ import type { ExecutionPackage } from "./integration/execution-package"
 import { ExecutionPackage as ExecutionPackageContract } from "@opencode-ai/schema/execution-package"
 import { OrchestratorService } from "./orchestrator"
 import type { PhaseEntry } from "./orchestrator"
+import type { PipelineProgressHandler } from "./pipeline/pipeline"
 
 type ExecutionPackageInfo = typeof ExecutionPackageContract.Info.Type
 
@@ -42,7 +43,10 @@ export interface IntegrationResult {
 export interface Interface {
   readonly decide: (input: IntegrationInput) => Effect.Effect<IntegrationResult>
   readonly bypass: (input: IntegrationInput) => Effect.Effect<IntegrationResult>
-  readonly integrate: (input: IntegrationInput) => Effect.Effect<ExecutionPackage>
+  readonly integrate: (
+    input: IntegrationInput,
+    onProgress?: PipelineProgressHandler,
+  ) => Effect.Effect<ExecutionPackage>
   readonly summary: (pkg: ExecutionPackage) => Effect.Effect<ExecutionPackageInfo>
 }
 
@@ -74,7 +78,7 @@ const make = Effect.gen(function* () {
       assistantResponses: input.assistantResponses,
       toolResults: input.toolResults,
       projectInfo: input.projectInfo,
-    })
+    }, onProgress)
 
     const summary = buildSummary(entries)
 
@@ -104,7 +108,10 @@ const make = Effect.gen(function* () {
     return { decision: executionDecision, shouldBypass: executionDecision.continueNormally }
   })
 
-  const integrate = Effect.fn("SessionIntegration.integrate")(function* (input: IntegrationInput) {
+  const integrate = Effect.fn("SessionIntegration.integrate")(function* (
+    input: IntegrationInput,
+    onProgress?: PipelineProgressHandler,
+  ) {
     const { executionPackage, diagnostics } = yield* orchestrator.orchestrateWithContext({
       promptText: input.promptText,
       sessionID: input.sessionID,
