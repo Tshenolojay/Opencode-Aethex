@@ -105,6 +105,7 @@ const execute = Effect.fn("SpecialistRuntime.execute")(function* (input: Runtime
     }
 
     const result = yield* Effect.exit(executor.execute({
+      sessionID: input.sessionID,
       specialist: input.specialist,
       taskObjective: prompt.userPrompt,
       taskType: input.taskType,
