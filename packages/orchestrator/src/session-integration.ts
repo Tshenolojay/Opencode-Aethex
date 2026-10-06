@@ -233,11 +233,13 @@ const make = Effect.gen(function* () {
       capabilityMatch: pkg.capabilityPlan?.reason,
       routingStrategy: routing?.routingStrategy ?? routing?.routingPolicy,
       fallbackModel: routing?.fallbackModelID,
-      repositoryIntelligence: pkg.repositoryIntelligence?.enrichedSummary ?? narrative?.repositoryFindings,
-      architectureSummary: pkg.architectureIntelligence?.summary ?? narrative?.architectureFindings,
-      dependencySummary: pkg.dependencyIntelligence?.summary ?? narrative?.dependencyFindings,
-      documentationSummary: pkg.documentationIntelligence?.summary ?? narrative?.documentationFindings,
-      verificationSummary: pkg.verificationIntelligence?.summary ?? narrative?.verificationFindings,
+      // Internal intelligence is heuristic planning material. The public Knowledge
+      // panel is populated only by real child-agent/task execution evidence.
+      repositoryIntelligence: undefined,
+      architectureSummary: undefined,
+      dependencySummary: undefined,
+      documentationSummary: undefined,
+      verificationSummary: undefined,
       recommendations: recommendations.length ? recommendations : undefined,
       risks: risks?.length ? risks : undefined,
       constraints: constraints?.length ? constraints : undefined,
