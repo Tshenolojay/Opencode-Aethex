@@ -495,7 +495,27 @@ const layer = Layer.effect(
                       branch === undefined ? undefined : `branch=${branch}`,
                       `repositoryFiles=${repositorySize}`,
                     ].filter((value): value is string => value !== undefined).join("\n"),
-                  })
+                  }, (progress) =>
+                    Effect.gen(function* () {
+                      const progressInfo = yield* integration.value.summary(progress.executionPackage)
+                      const liveInfo: ExecutionPackageInfo = {
+                        ...progressInfo,
+                        status:
+                          progressInfo.status === "bypassed" || progressInfo.status === "planned"
+                            ? progressInfo.status
+                            : progress.stage,
+                        activity: [
+                          `Pipeline stage: ${progress.stage}`,
+                          ...(progressInfo.activity ?? []),
+                        ],
+                      }
+                      setExecutionPackage(liveInfo.sessionID, liveInfo)
+                      yield* events.publish(ExecutionPackageContract.Updated, {
+                        sessionID: liveInfo.sessionID,
+                        package: liveInfo,
+                      })
+                    }),
+                  )
                   .pipe(
                     Effect.map((resolved) => ({ ok: true as const, resolved })),
                     Effect.catchCause((cause) =>
@@ -543,11 +563,6 @@ const layer = Layer.effect(
                     capabilityMatch: info.capabilityMatch,
                     routingStrategy: info.routingStrategy,
                     fallbackModel: info.fallbackModel,
-                  }),
-                  events.publish(ExecutionPackageContract.ExecutionCompleted, {
-                    sessionID: info.sessionID,
-                    currentTask: info.currentTask,
-                    status: info.status,
                   }),
                 ])
               }
