@@ -13,6 +13,7 @@ import type { ExecutionPackage } from "../integration/execution-package"
 import type { BaseSpecialistInterface } from "../specialists/base-specialist"
 
 export interface ExecutorInput {
+  readonly sessionID: string
   readonly specialist: SpecialistProfile
   readonly taskObjective: string
   readonly taskType: TaskType
@@ -60,7 +61,7 @@ const execute: Interface["execute"] = Effect.fn("SpecialistExecutor.execute")(fu
       bundle: input.knowledgeBundle,
       taskObjective: input.taskObjective,
       taskType: input.taskType,
-      sessionID: "",
+      sessionID: input.sessionID,
       executionPackage: input.executionPackage,
     })
     return result
