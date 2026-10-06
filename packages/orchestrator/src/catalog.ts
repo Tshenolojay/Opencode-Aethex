@@ -80,7 +80,6 @@ const layer = Layer.effect(
         default: () => Effect.succeed(defaultModel),
         small: (providerID) => Effect.succeed(models.find((m) => m.providerID === providerID && m.limit.context <= 32000)),
       },
-      update,
     })
   }),
 )
