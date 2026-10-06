@@ -456,9 +456,9 @@ const skip = Effect.fn("OrchestratorService.skip")(function* (_input) {
 function composeDependencyTiers(tiers: readonly unknown[]): Layer.Layer<any, any, any> {
   if (tiers.length === 0) return Layer.empty as unknown as Layer.Layer<any, any, any>
   const [first, ...rest] = tiers
-  return rest.reduce(
+  return rest.reduce<Layer.Layer<any, any, any>>(
     (acc, tier) => Layer.provideMerge(tier as any, acc as any) as any,
-    first as Layer.Layer<any, any, any>,
+    first as unknown as Layer.Layer<any, any, any>,
   )
 }
 
