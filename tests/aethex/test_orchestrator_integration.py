@@ -15,10 +15,11 @@ def source(path: str) -> str:
 def test_orchestrator_is_an_additive_session_hook() -> None:
     session = source("packages/core/src/session.ts")
     assert "SessionIntegration.Service" in session
-    assert "integration.value.integrate" in session
+    assert "integration.value" in session
+    assert ".integrate({" in session
     assert "Flag.OPENCODE_DISABLE_ORCHESTRATOR" in session
     assert "execution.wake(input.sessionID)" in session
-    assert session.index("integration.value.integrate") < session.index("execution.wake(input.sessionID)")
+    assert session.index("integration.value") < session.index("execution.wake(input.sessionID)")
 
 
 def test_high_confidence_bypass_is_prompt_transparent() -> None:
