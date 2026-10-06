@@ -98,7 +98,7 @@ const execute: Interface["execute"] = Effect.fn("SpecialistExecutor.execute")(fu
     modelCandidate: assignment.primary,
     warnings: [`Specialist ${input.specialist.id} factory unavailable — using model-assignment fallback`],
     errors: [],
-    metadata: { executionPhase: "specialist-execution", fallback: true },
+    metadata: { executionPhase: "specialist-execution", fallback: "true" },
   } satisfies SpecialistResult
 }) as unknown as Interface["execute"]
 
